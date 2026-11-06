@@ -1,0 +1,14 @@
+[package]
+name = "multilink-core"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+serde.workspace = true
+serde_json.workspace = true
+serde_yaml.workspace = true
+base64 = "0.22"
+url = "2"
+uuid = "1"
+ipnet = "2"
+

@@ -1,0 +1,25 @@
+[package]
+name = "multilink-app"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+everty-ui = { path = "../../EvertyUI" }
+multilink-core = { path = "../multilink-core" }
+multilink-mihomo = { path = "../multilink-mihomo" }
+multilink-platform = { path = "../multilink-platform" }
+serde_json.workspace = true
+winit = "0.30"
+softbuffer = "0.4"
+arboard = { version = "3", default-features = false }
+image = { version = "0.25", default-features = false, features = ["png"] }
+uuid = { version = "1", features = ["v4"] }
+chrono = { version = "0.4", default-features = false, features = ["std"] }
+
+[target.'cfg(windows)'.dependencies]
+tray-icon = "0.21.3"
+winreg = "0.55"
+
+[build-dependencies]
+image = { version = "0.25", default-features = false, features = ["png", "ico"] }
+winresource = "0.1"

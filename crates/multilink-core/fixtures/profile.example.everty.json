@@ -1,0 +1,16 @@
+{
+  "format": "everty.multilink",
+  "version": 1,
+  "profile_id": "example-only",
+  "name": "Everty example",
+  "revision": 1,
+  "issued_at": 1793912400,
+  "expires_at": null,
+  "servers": [
+    {
+      "id": "demo-node-1",
+      "name": "DE-demo",
+      "uri": "vless://00000000-0000-4000-8000-000000000001@example.invalid:443#DE-demo"
+    }
+  ]
+}

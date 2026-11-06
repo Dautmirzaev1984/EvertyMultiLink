@@ -1,0 +1,13 @@
+[package]
+name = "multilink-mihomo"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+multilink-core = { path = "../multilink-core" }
+multilink-platform = { path = "../multilink-platform" }
+serde_json.workspace = true
+serde_yaml.workspace = true
+reqwest.workspace = true
+uuid = { version = "1", features = ["v4"] }
+
