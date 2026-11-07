@@ -5,7 +5,10 @@ import android.app.UiModeManager
 import android.content.BroadcastReceiver
 import android.content.ClipData
 import android.content.ClipboardManager
+import android.Manifest
 import android.content.Context
+import android.content.pm.PackageManager
+import androidx.core.app.ActivityCompat
 import android.content.Intent
 import android.content.IntentFilter
 import android.content.res.Configuration
@@ -79,6 +82,8 @@ class MainActivity : AppCompatActivity() {
         detectDeviceMode()
         setupViewPagerAndNavigation()
         handleIntent(intent)
+
+        checkNotificationPermission()
 
         // Automatic subscription check & sync on launch
         checkSubscriptionOnStart()
@@ -155,10 +160,18 @@ class MainActivity : AppCompatActivity() {
         val intent = Intent(this, EvertyVpnService::class.java).apply {
             this.action = action
         }
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+        if (action == EvertyVpnService.ACTION_CONNECT && Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             startForegroundService(intent)
         } else {
             startService(intent)
+        }
+    }
+
+    private fun checkNotificationPermission() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            if (ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
+                ActivityCompat.requestPermissions(this, arrayOf(Manifest.permission.POST_NOTIFICATIONS), 102)
+            }
         }
     }
 
@@ -190,14 +203,41 @@ class MainActivity : AppCompatActivity() {
             .create()
 
         lanServer?.stop()
-        lanServer = TvLanSyncServer(this) { importedConfig, count ->
-            val nodes = ConfigParser.parse(importedConfig)
+        lanServer = TvLanSyncServer(this) { importedConfig, count, subName, subExpire, disabledSigs, disabledNames ->
+            val rawNodes = ConfigParser.parse(importedConfig)
+            val nodes = rawNodes.map { node ->
+                val sig = "${node.server}:${node.port}:${node.uuid}"
+                val isExplicitlyDisabled = (sig in disabledSigs) || (node.name in disabledNames)
+                if (isExplicitlyDisabled) node.copy(isEnabled = false) else node
+            }
             if (nodes.isNotEmpty()) {
-                val syncResult = settings.syncSubscriptionNodes(nodes)
+                val targetId = java.util.UUID.randomUUID().toString()
+                val targetName = subName ?: "Получено по Wi-Fi"
+                settings.addOrUpdateSubscription(
+                    Subscription(
+                        id = targetId,
+                        name = targetName,
+                        url = importedConfig,
+                        updatedAt = System.currentTimeMillis(),
+                        nodesCount = nodes.size,
+                        expireTimestamp = subExpire
+                    )
+                )
+                val syncResult = settings.syncSubscriptionNodes(nodes, subId = targetId)
                 notifyNodesChanged()
-                tvLanStatus.text = "✅ Получено ${syncResult.total} узлов!"
+                val disabledCount = nodes.count { !it.isEnabled }
+                val extra = if (disabledCount > 0) " (выключено $disabledCount серверов)" else ""
+                tvLanStatus.text = "✅ Получено ${syncResult.total} узлов$extra!"
                 tvLanStatus.setTextColor(ContextCompat.getColor(this, R.color.accent_mint))
                 Toast.makeText(this, "Подписка успешно получена по локальной сети!", Toast.LENGTH_LONG).show()
+            } else if (importedConfig.startsWith("http://") || importedConfig.startsWith("https://")) {
+                fetchSubscription(
+                    importedConfig,
+                    subName = subName,
+                    isManual = true,
+                    disabledSignatures = disabledSigs,
+                    disabledNames = disabledNames
+                )
             }
         }
 
@@ -225,10 +265,22 @@ class MainActivity : AppCompatActivity() {
     }
 
     fun showSingleSubscriptionQr(sub: Subscription) {
+        val allNodes = settings.getNodes().filter { it.subscriptionId == sub.id || it.subscriptionId == null }
+        val disabledNames = allNodes.filter { !it.isEnabled }.map { it.name }
+        val qrContent = if (disabledNames.isNotEmpty()) {
+            val encUrl = java.net.URLEncoder.encode(sub.url, "UTF-8")
+            val encName = java.net.URLEncoder.encode(sub.name, "UTF-8")
+            val encDisabled = java.net.URLEncoder.encode(disabledNames.joinToString(","), "UTF-8")
+            "everty://sync?url=$encUrl&name=$encName&disabled=$encDisabled"
+        } else {
+            sub.url
+        }
+
+        val extraSub = if (disabledNames.isNotEmpty()) " (${disabledNames.size} выкл)" else ""
         displayQrCode(
             title = "Поделиться подпиской",
-            subtitle = "${sub.name} (${sub.nodesCount} серверов)",
-            content = sub.url
+            subtitle = "${sub.name} (${sub.nodesCount} серверов$extraSub)",
+            content = qrContent
         )
     }
 
@@ -250,12 +302,7 @@ class MainActivity : AppCompatActivity() {
         if (subs.isNotEmpty() && nodes.isNotEmpty()) {
             showShareChoiceDialog(subs, nodes)
         } else if (subs.isNotEmpty()) {
-            val s = subs.first()
-            displayQrCode(
-                title = "Поделиться подпиской",
-                subtitle = "${s.name} (${s.nodesCount} серверов)",
-                content = s.url
-            )
+            showSingleSubscriptionQr(subs.first())
         } else if (nodes.size == 1) {
             val node = nodes.first()
             val content = node.rawUri?.takeIf { it.isNotEmpty() }
@@ -292,23 +339,13 @@ class MainActivity : AppCompatActivity() {
         btnSub.setOnClickListener {
             dialog.dismiss()
             if (subs.size == 1) {
-                val s = subs.first()
-                displayQrCode(
-                    title = "Поделиться подпиской",
-                    subtitle = "${s.name} (${s.nodesCount} серверов)",
-                    content = s.url
-                )
+                showSingleSubscriptionQr(subs.first())
             } else {
                 val names = subs.map { "${it.name} (${it.nodesCount} серверов)" }.toTypedArray()
                 MaterialAlertDialogBuilder(this)
                     .setTitle("Выберите подписку для QR")
                     .setItems(names) { _, which ->
-                        val s = subs[which]
-                        displayQrCode(
-                            title = "Поделиться подпиской",
-                            subtitle = "${s.name} (${s.nodesCount} серверов)",
-                            content = s.url
-                        )
+                        showSingleSubscriptionQr(subs[which])
                     }
                     .setNegativeButton("Отмена", null)
                     .show()
@@ -380,7 +417,14 @@ class MainActivity : AppCompatActivity() {
         dialog.show()
     }
 
-    fun fetchSubscription(url: String, subId: String? = null, subName: String? = null, isManual: Boolean = true) {
+    fun fetchSubscription(
+        url: String,
+        subId: String? = null,
+        subName: String? = null,
+        isManual: Boolean = true,
+        disabledSignatures: List<String> = emptyList(),
+        disabledNames: List<String> = emptyList()
+    ) {
         if (isManual) {
             Toast.makeText(this, "Синхронизация подписки…", Toast.LENGTH_SHORT).show()
         }
@@ -396,7 +440,15 @@ class MainActivity : AppCompatActivity() {
                     .build()
                 client.newCall(request).execute().use { response ->
                     val body = response.body?.string() ?: ""
-                    val nodes = ConfigParser.parse(body)
+                    val rawNodes = ConfigParser.parse(body)
+                    val nodes = rawNodes.map { node ->
+                        val sig = "${node.server}:${node.port}:${node.uuid}"
+                        if (sig in disabledSignatures || node.name in disabledNames) {
+                            node.copy(isEnabled = false)
+                        } else {
+                            node
+                        }
+                    }
 
                     // Parse subscription-userinfo header: upload=...; download=...; total=...; expire=...
                     val subUserInfo = response.header("subscription-userinfo")
@@ -498,19 +550,42 @@ class MainActivity : AppCompatActivity() {
         val trimmed = content.trim()
         if (trimmed.startsWith("http://") && trimmed.contains("?pin=")) {
             val pin = trimmed.substringAfter("?pin=")
+            val subs = settings.getSubscriptions()
+            val allNodes = settings.getNodes()
             val activeNode = settings.getSelectedNode()
-            val sharePayload = activeNode?.rawUri ?: settings.lastSubscriptionUrl ?: ""
+            val currentSub = subs.find { it.url == settings.lastSubscriptionUrl } ?: subs.firstOrNull()
+            val sharePayload = currentSub?.url ?: activeNode?.rawUri ?: settings.lastSubscriptionUrl ?: ""
 
             if (sharePayload.isEmpty()) {
-                Toast.makeText(this, "Нет активной подписки для передачи на ТВ", Toast.LENGTH_LONG).show()
+                Toast.makeText(this, "Нет активной подписки для передачи на устройство", Toast.LENGTH_LONG).show()
                 return
             }
 
+            val subNodes = if (currentSub != null) allNodes.filter { it.subscriptionId == currentSub.id || it.subscriptionId == null } else allNodes
+            val disabledSigs = subNodes.filter { !it.isEnabled }.map { "${it.server}:${it.port}:${it.uuid}" }
+            val disabledNames = subNodes.filter { !it.isEnabled }.map { it.name }
+
+            val subTitle = currentSub?.name ?: "Everty MultiLink"
+            val disabledCount = disabledNames.size
+            val infoMsg = if (disabledCount > 0) {
+                "Перенести подписку \"$subTitle\" на ТВ/устройство?\n($disabledCount отключённых серверов останутся выключенными)"
+            } else {
+                "Перенести подписку \"$subTitle\" на экран телевизора?"
+            }
+
             MaterialAlertDialogBuilder(this)
-                .setTitle("📺 Найдено Everty TV")
-                .setMessage("Перенести текущую подписку на экран телевизора?")
+                .setTitle("📺 Найдено устройство")
+                .setMessage(infoMsg)
                 .setPositiveButton("Передать") { _, _ ->
-                    TvLanClient.sendConfigToTv(trimmed, pin, sharePayload) { _, msg ->
+                    TvLanClient.sendConfigToTv(
+                        tvUrl = trimmed,
+                        pin = pin,
+                        config = sharePayload,
+                        subName = currentSub?.name,
+                        subExpire = currentSub?.expireTimestamp ?: 0L,
+                        disabledSignatures = disabledSigs,
+                        disabledNames = disabledNames
+                    ) { _, msg ->
                         mainHandler.post {
                             Toast.makeText(this, msg, Toast.LENGTH_LONG).show()
                         }
@@ -518,6 +593,21 @@ class MainActivity : AppCompatActivity() {
                 }
                 .setNegativeButton("Отмена", null)
                 .show()
+        } else if (trimmed.startsWith("everty://sync")) {
+            try {
+                val uri = android.net.Uri.parse(trimmed)
+                val subUrl = uri.getQueryParameter("url") ?: ""
+                val subName = uri.getQueryParameter("name")
+                val disabledParam = uri.getQueryParameter("disabled") ?: ""
+                val disabledList = if (disabledParam.isNotEmpty()) disabledParam.split(",") else emptyList()
+                if (subUrl.isNotEmpty()) {
+                    fetchSubscription(subUrl, subName = subName, isManual = true, disabledNames = disabledList)
+                } else {
+                    Toast.makeText(this, "Неверная ссылка синхронизации", Toast.LENGTH_SHORT).show()
+                }
+            } catch (e: Exception) {
+                Toast.makeText(this, "Ошибка импорта: ${e.message}", Toast.LENGTH_SHORT).show()
+            }
         } else {
             if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) {
                 fetchSubscription(trimmed, isManual = true)

@@ -4,6 +4,7 @@ import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
+import org.json.JSONArray
 import org.json.JSONObject
 import java.io.IOException
 import java.net.DatagramPacket
@@ -18,7 +19,16 @@ object TvLanClient {
         .readTimeout(8, TimeUnit.SECONDS)
         .build()
 
-    fun sendConfigToTv(tvUrl: String, pin: String, config: String, callback: (Boolean, String) -> Unit) {
+    fun sendConfigToTv(
+        tvUrl: String,
+        pin: String,
+        config: String,
+        subName: String? = null,
+        subExpire: Long = 0L,
+        disabledSignatures: List<String> = emptyList(),
+        disabledNames: List<String> = emptyList(),
+        callback: (Boolean, String) -> Unit
+    ) {
         Thread {
             try {
                 // If url has query pin or bare url, normalize
@@ -28,6 +38,18 @@ object TvLanClient {
                 val json = JSONObject().apply {
                     put("config", config)
                     put("pin", pin)
+                    if (!subName.isNullOrBlank()) put("subName", subName)
+                    if (subExpire > 0L) put("subExpire", subExpire)
+                    if (disabledSignatures.isNotEmpty()) {
+                        val arr = JSONArray()
+                        for (sig in disabledSignatures) arr.put(sig)
+                        put("disabledSignatures", arr)
+                    }
+                    if (disabledNames.isNotEmpty()) {
+                        val arr = JSONArray()
+                        for (name in disabledNames) arr.put(name)
+                        put("disabledNames", arr)
+                    }
                 }
 
                 val body = json.toString().toRequestBody("application/json; charset=utf-8".toMediaType())
@@ -43,7 +65,7 @@ object TvLanClient {
                         val ok = respJson.optBoolean("ok", false)
                         val count = respJson.optInt("count", 0)
                         if (ok) {
-                            callback(true, "Успешно отправлено на ТВ ($count узлов)")
+                            callback(true, "Успешно отправлено на устройство ($count узлов)")
                         } else {
                             callback(false, respJson.optString("error", "Ошибка передачи"))
                         }

@@ -38,6 +38,7 @@ class EvertyVpnService : VpnService() {
     private val isRunning = AtomicBoolean(false)
     private var workerThread: Thread? = null
     private var mihomoProcess: Process? = null
+    private val isDisconnecting = AtomicBoolean(false)
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         when (intent?.action) {
@@ -53,6 +54,7 @@ class EvertyVpnService : VpnService() {
     }
 
     private fun connect() {
+        isDisconnecting.set(false)
         val settings = AppSettings(this)
         val selectedNode = settings.getSelectedNode()
         if (selectedNode == null || !selectedNode.isEnabled) {
@@ -183,30 +185,27 @@ class EvertyVpnService : VpnService() {
     }
 
     private fun disconnect() {
+        if (isDisconnecting.getAndSet(true)) {
+            Log.d(TAG, "Already disconnecting, skipping duplicate disconnect")
+            return
+        }
         Log.d(TAG, "Disconnecting VPN...")
         isRunning.set(false)
         workerThread?.interrupt()
         workerThread = null
 
-        try {
-            Tun2Socks.stop()
-        } catch (e: Exception) {
-            Log.e(TAG, "Error stopping Tun2Socks: ${e.message}")
-        }
-
-        try {
-            mihomoProcess?.destroy()
-        } catch (_: Exception) {}
+        runCatching { Tun2Socks.stop() }.onFailure { Log.e(TAG, "Error stopping Tun2Socks: ${it.message}") }
+        runCatching { mihomoProcess?.destroy() }
         mihomoProcess = null
 
-        try {
-            vpnInterface?.close()
-        } catch (_: Exception) {}
+        runCatching { vpnInterface?.close() }
         vpnInterface = null
 
         broadcastState(STATE_DISCONNECTED)
-        stopForeground(STOP_FOREGROUND_REMOVE)
-        Log.d(TAG, "VPN Disconnected.")
+        runCatching { stopForeground(STOP_FOREGROUND_REMOVE) }
+        val nm = getSystemService(android.app.NotificationManager::class.java)
+        runCatching { nm?.cancel(1001) }
+        Log.d(TAG, "VPN Disconnected cleanly.")
     }
 
     private fun broadcastState(state: Int) {
@@ -219,7 +218,9 @@ class EvertyVpnService : VpnService() {
     }
 
     private fun buildNotification(text: String, isConnected: Boolean): Notification {
-        val launchIntent = Intent(this, MainActivity::class.java)
+        val launchIntent = Intent(this, MainActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP
+        }
         val pendingIntent = PendingIntent.getActivity(
             this, 0, launchIntent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
@@ -236,10 +237,12 @@ class EvertyVpnService : VpnService() {
         val builder = NotificationCompat.Builder(this, EvertyApp.VPN_CHANNEL_ID)
             .setContentTitle("Everty MultiLink")
             .setContentText(text)
-            .setSmallIcon(R.mipmap.ic_launcher)
+            .setSmallIcon(R.drawable.ic_qs_everty)
             .setContentIntent(pendingIntent)
-            .setOngoing(isConnected)
+            .setOngoing(true)
             .setPriority(NotificationCompat.PRIORITY_LOW)
+            .setCategory(NotificationCompat.CATEGORY_SERVICE)
+            .setForegroundServiceBehavior(NotificationCompat.FOREGROUND_SERVICE_IMMEDIATE)
 
         if (isConnected) {
             builder.addAction(android.R.drawable.ic_menu_close_clear_cancel, "Отключить", disconnectPending)

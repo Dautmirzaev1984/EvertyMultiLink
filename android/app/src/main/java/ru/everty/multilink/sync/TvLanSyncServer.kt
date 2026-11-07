@@ -22,7 +22,14 @@ import java.util.concurrent.Executors
 
 class TvLanSyncServer(
     private val context: Context,
-    private val onConfigImported: (String, Int) -> Unit
+    private val onConfigImported: (
+        config: String,
+        count: Int,
+        subName: String?,
+        subExpire: Long,
+        disabledSignatures: List<String>,
+        disabledNames: List<String>
+    ) -> Unit
 ) {
     private var serverSocket: ServerSocket? = null
     private val executor = Executors.newFixedThreadPool(4)
@@ -118,6 +125,20 @@ class TvLanSyncServer(
                 val json = JSONObject(jsonStr)
                 val reqPin = json.optString("pin")
                 val config = json.optString("config")
+                val subName = json.optString("subName").takeIf { it.isNotBlank() }
+                val subExpire = json.optLong("subExpire", 0L)
+                val disabledSignatures = mutableListOf<String>()
+                json.optJSONArray("disabledSignatures")?.let { arr ->
+                    for (i in 0 until arr.length()) {
+                        disabledSignatures.add(arr.getString(i))
+                    }
+                }
+                val disabledNames = mutableListOf<String>()
+                json.optJSONArray("disabledNames")?.let { arr ->
+                    for (i in 0 until arr.length()) {
+                        disabledNames.add(arr.getString(i))
+                    }
+                }
 
                 if (reqPin != pinCode && pinCode.isNotEmpty()) {
                     val resp = JSONObject().apply {
@@ -143,7 +164,7 @@ class TvLanSyncServer(
                     }
 
                     mainHandler.post {
-                        onConfigImported(config, parsedNodes.size)
+                        onConfigImported(config, parsedNodes.size, subName, subExpire, disabledSignatures, disabledNames)
                     }
                     val resp = JSONObject().apply {
                         put("ok", true)

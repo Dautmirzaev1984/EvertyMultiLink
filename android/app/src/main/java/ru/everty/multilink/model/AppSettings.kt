@@ -202,6 +202,7 @@ class AppSettings(context: Context) {
             if (existing != null) {
                 val nodeUpdated = existing.copy(
                     name = n.name,
+                    isEnabled = if (!n.isEnabled) false else existing.isEnabled,
                     security = n.security,
                     sni = n.sni,
                     pbk = n.pbk,

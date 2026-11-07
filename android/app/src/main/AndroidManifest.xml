@@ -71,6 +71,18 @@
                 android:value="Smart VPN and split tunneling proxy" />
         </service>
 
+        <!-- Quick Settings Tile for notification shade -->
+        <service
+            android:name=".service.EvertyTileService"
+            android:icon="@drawable/ic_qs_everty"
+            android:label="Everty MultiLink"
+            android:permission="android.permission.BIND_QUICK_SETTINGS_TILE"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.service.quicksettings.action.QS_TILE" />
+            </intent-filter>
+        </service>
+
     </application>
 
 </manifest>
