@@ -38,9 +38,10 @@ ARCH_CONFIGS = [
 def find_ndk_compiler(cc_name):
     # Search ANDROID_NDK_HOME, ANDROID_NDK_ROOT, or standard SDK paths
     ndk_dirs = []
-    for env_var in ["ANDROID_NDK_HOME", "ANDROID_NDK_ROOT", "NDK_HOME"]:
-        if os.environ.get(env_var):
-            ndk_dirs.append(os.environ[env_var])
+    for env_var in ["ANDROID_NDK", "ANDROID_NDK_HOME", "ANDROID_NDK_ROOT", "ANDROID_NDK_LATEST_HOME", "NDK_HOME"]:
+        val = os.environ.get(env_var)
+        if val and os.path.isdir(val):
+            ndk_dirs.append(val)
     
     sdk_root = os.environ.get("ANDROID_HOME") or os.environ.get("ANDROID_SDK_ROOT")
     if not sdk_root and sys.platform == "win32":
@@ -50,7 +51,9 @@ def find_ndk_compiler(cc_name):
     
     if sdk_root and os.path.isdir(os.path.join(sdk_root, "ndk")):
         for entry in os.listdir(os.path.join(sdk_root, "ndk")):
-            ndk_dirs.append(os.path.join(sdk_root, "ndk", entry))
+            ndk_path = os.path.join(sdk_root, "ndk", entry)
+            if os.path.isdir(ndk_path):
+                ndk_dirs.append(ndk_path)
 
     is_win = sys.platform == "win32"
     for ndk in ndk_dirs:
@@ -60,6 +63,10 @@ def find_ndk_compiler(cc_name):
             candidate = os.path.join(tc, cc_name + ext)
             if os.path.isfile(candidate):
                 return candidate
+            if is_win:
+                candidate_exe = os.path.join(tc, cc_name + ".exe")
+                if os.path.isfile(candidate_exe):
+                    return candidate_exe
     return None
 
 def download_mihomo(cfg):

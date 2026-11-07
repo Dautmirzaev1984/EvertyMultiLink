@@ -27,24 +27,13 @@ android {
     }
 
     signingConfigs {
-        debug {
-            // Uses default android debug keystore
-        }
         release {
-            def debugKeystore = file("${System.getProperty('user.home')}/.android/debug.keystore")
             def customKeystore = System.getenv("KEYSTORE_PATH") ? file(System.getenv("KEYSTORE_PATH")) : null
             if (customKeystore != null && customKeystore.exists()) {
                 storeFile customKeystore
                 storePassword System.getenv("KEYSTORE_PASSWORD") ?: "android"
                 keyAlias System.getenv("KEY_ALIAS") ?: "androiddebugkey"
                 keyPassword System.getenv("KEY_PASSWORD") ?: "android"
-            } else if (debugKeystore.exists()) {
-                storeFile debugKeystore
-                storePassword "android"
-                keyAlias "androiddebugkey"
-                keyPassword "android"
-            } else {
-                signingConfig signingConfigs.debug
             }
         }
     }
@@ -53,7 +42,11 @@ android {
         release {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
-            signingConfig signingConfigs.release
+            if (signingConfigs.release.storeFile != null) {
+                signingConfig signingConfigs.release
+            } else {
+                signingConfig signingConfigs.debug
+            }
         }
         debug {
             applicationIdSuffix ".debug"
