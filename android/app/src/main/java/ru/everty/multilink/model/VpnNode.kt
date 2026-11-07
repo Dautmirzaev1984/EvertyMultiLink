@@ -37,5 +37,30 @@ data class Subscription(
     var name: String,
     var url: String,
     var updatedAt: Long = 0L,
-    var nodesCount: Int = 0
-)
+    var nodesCount: Int = 0,
+    var expireTimestamp: Long = 0L,
+    var uploadBytes: Long = 0L,
+    var downloadBytes: Long = 0L,
+    var totalBytes: Long = 0L
+) {
+    fun getRemainingDaysText(): String? {
+        if (expireTimestamp <= 0) return null
+        val nowSec = System.currentTimeMillis() / 1000
+        val diffSec = expireTimestamp - nowSec
+        if (diffSec <= 0) return "⚠️ Истекла"
+        val days = (diffSec / 86400).toInt()
+        val suffix = when {
+            days % 100 in 11..19 -> "дней"
+            days % 10 == 1 -> "день"
+            days % 10 in 2..4 -> "дня"
+            else -> "дней"
+        }
+        return if (days == 0) "⏳ < 1 дня" else "⏳ $days $suffix"
+    }
+
+    fun getExpireFormattedDate(): String? {
+        if (expireTimestamp <= 0) return null
+        val sdf = java.text.SimpleDateFormat("dd.MM.yyyy", java.util.Locale.getDefault())
+        return sdf.format(java.util.Date(expireTimestamp * 1000))
+    }
+}

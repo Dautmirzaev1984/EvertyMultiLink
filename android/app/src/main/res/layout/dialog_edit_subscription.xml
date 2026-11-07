@@ -31,6 +31,23 @@
         android:layout_marginBottom="14dp"
         android:background="@color/border_card" />
 
+    <!-- Expire badge / info -->
+    <TextView
+        android:id="@+id/tvEditSubExpire"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="@drawable/card_background"
+        android:paddingStart="12dp"
+        android:paddingTop="8dp"
+        android:paddingEnd="12dp"
+        android:paddingBottom="8dp"
+        android:text="⏳ Осталось: 29 дней"
+        android:textColor="@color/accent_gold"
+        android:textSize="13sp"
+        android:textStyle="bold"
+        android:visibility="gone"
+        android:layout_marginBottom="12dp" />
+
     <!-- Name input -->
     <TextView
         android:layout_width="match_parent"

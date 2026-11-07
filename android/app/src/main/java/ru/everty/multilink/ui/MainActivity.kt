@@ -397,13 +397,47 @@ class MainActivity : AppCompatActivity() {
                 client.newCall(request).execute().use { response ->
                     val body = response.body?.string() ?: ""
                     val nodes = ConfigParser.parse(body)
+
+                    // Parse subscription-userinfo header: upload=...; download=...; total=...; expire=...
+                    val subUserInfo = response.header("subscription-userinfo")
+                        ?: response.header("Subscription-Userinfo")
+                        ?: response.header("Subscription-UserInfo")
+
+                    var expireSec = 0L
+                    var uploadBytes = 0L
+                    var downloadBytes = 0L
+                    var totalBytes = 0L
+
+                    if (!subUserInfo.isNullOrBlank()) {
+                        val parts = subUserInfo.split(";")
+                        for (part in parts) {
+                            val kv = part.trim().split("=")
+                            if (kv.size == 2) {
+                                val k = kv[0].trim().lowercase()
+                                val v = kv[1].trim().toLongOrNull() ?: 0L
+                                when (k) {
+                                    "expire" -> expireSec = v
+                                    "upload" -> uploadBytes = v
+                                    "download" -> downloadBytes = v
+                                    "total" -> totalBytes = v
+                                }
+                            }
+                        }
+                    }
+
                     mainHandler.post {
                         if (nodes.isNotEmpty()) {
                             val currentSubs = settings.getSubscriptions()
                             val targetId = subId ?: currentSubs.find { it.url == url }?.id ?: java.util.UUID.randomUUID().toString()
+                            val existingSub = currentSubs.find { it.id == targetId }
                             val targetName = subName
-                                ?: currentSubs.find { it.id == targetId }?.name
+                                ?: existingSub?.name
                                 ?: try { java.net.URI(cleanUrl).host ?: "Подписка" } catch (_: Exception) { "Подписка" }
+
+                            val finalExpire = if (expireSec > 0L) expireSec else (existingSub?.expireTimestamp ?: 0L)
+                            val finalUpload = if (uploadBytes > 0L) uploadBytes else (existingSub?.uploadBytes ?: 0L)
+                            val finalDownload = if (downloadBytes > 0L) downloadBytes else (existingSub?.downloadBytes ?: 0L)
+                            val finalTotal = if (totalBytes > 0L) totalBytes else (existingSub?.totalBytes ?: 0L)
 
                             settings.addOrUpdateSubscription(
                                 Subscription(
@@ -411,7 +445,11 @@ class MainActivity : AppCompatActivity() {
                                     name = targetName,
                                     url = url,
                                     updatedAt = System.currentTimeMillis(),
-                                    nodesCount = nodes.size
+                                    nodesCount = nodes.size,
+                                    expireTimestamp = finalExpire,
+                                    uploadBytes = finalUpload,
+                                    downloadBytes = finalDownload,
+                                    totalBytes = finalTotal
                                 )
                             )
 

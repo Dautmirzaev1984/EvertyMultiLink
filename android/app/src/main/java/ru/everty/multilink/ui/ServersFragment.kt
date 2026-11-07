@@ -210,8 +210,28 @@ class ServersFragment : Fragment() {
         val btnDelete = dialogView.findViewById<MaterialButton>(R.id.btnEditSubDelete)
         val btnCancel = dialogView.findViewById<MaterialButton>(R.id.btnEditSubCancel)
 
+        val tvExpire = dialogView.findViewById<TextView>(R.id.tvEditSubExpire)
         etName.setText(sub.name)
         etUrl.setText(sub.url)
+
+        val expireText = sub.getRemainingDaysText()
+        if (!expireText.isNullOrBlank()) {
+            tvExpire.visibility = View.VISIBLE
+            val cleanExpire = expireText.removePrefix("⏳ ")
+            val dateStr = sub.getExpireFormattedDate()
+            tvExpire.text = if (dateStr != null) {
+                "⏳ Срок действия: $cleanExpire (до $dateStr)"
+            } else {
+                "⏳ Срок действия: $cleanExpire"
+            }
+            if (expireText.contains("Истекла") || expireText.contains("< 1 дня")) {
+                tvExpire.setTextColor(ContextCompat.getColor(requireContext(), R.color.accent_red))
+            } else {
+                tvExpire.setTextColor(ContextCompat.getColor(requireContext(), R.color.accent_gold))
+            }
+        } else {
+            tvExpire.visibility = View.GONE
+        }
 
         val dialog = MaterialAlertDialogBuilder(requireContext())
             .setView(dialogView)

@@ -38,6 +38,7 @@ class SubscriptionsAdapter(
     inner class SubViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
         private val tvSubName: TextView = itemView.findViewById(R.id.tvSubName)
         private val tvSubCount: TextView = itemView.findViewById(R.id.tvSubCount)
+        private val tvSubExpire: TextView = itemView.findViewById(R.id.tvSubExpire)
         private val tvSubUrl: TextView = itemView.findViewById(R.id.tvSubUrl)
         private val tvSubUpdated: TextView = itemView.findViewById(R.id.tvSubUpdated)
         private val btnSubRefresh: MaterialButton = itemView.findViewById(R.id.btnSubRefresh)
@@ -75,6 +76,19 @@ class SubscriptionsAdapter(
                 tvSubUpdated.text = "Синхр: ${sdf.format(Date(sub.updatedAt))}"
             } else {
                 tvSubUpdated.text = "Не синхронизировано"
+            }
+
+            val expireText = sub.getRemainingDaysText()
+            if (!expireText.isNullOrBlank()) {
+                tvSubExpire.visibility = View.VISIBLE
+                tvSubExpire.text = expireText
+                if (expireText.contains("Истекла") || expireText.contains("< 1 дня")) {
+                    tvSubExpire.setTextColor(androidx.core.content.ContextCompat.getColor(itemView.context, R.color.accent_red))
+                } else {
+                    tvSubExpire.setTextColor(androidx.core.content.ContextCompat.getColor(itemView.context, R.color.accent_gold))
+                }
+            } else {
+                tvSubExpire.visibility = View.GONE
             }
         }
     }
