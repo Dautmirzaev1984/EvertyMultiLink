@@ -22,4 +22,6 @@ __pycache__/
 /vendor/mihomo/*.exe
 /vendor/mihomo/mihomo
 /vendor/mihomo/mihomo-*
+HABR_ARTICLE.md
+*habr*.md
 
