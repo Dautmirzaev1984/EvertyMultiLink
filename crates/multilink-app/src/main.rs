@@ -60,7 +60,7 @@ enum Update {
     Disconnected,
     Error(String),
     Imported(ImportReport, Option<String>, Option<u64>),
-    SubscriptionFetched(u64, String, Result<ImportReport, String>),
+    SubscriptionFetched(u64, u64, String, Result<ImportReport, String>),
     AntigravityChecked(String, Result<multilink_mihomo::AntigravityCheck, String>),
     SaveError,
     Notice(String),
@@ -411,6 +411,7 @@ enum Action {
     AddProcessRule,
     AddAntigravity,
     CheckAntigravity,
+    RuleField(bool),
     AddRuDomains,
     ClearServers,
     ToggleSystemProxy,
@@ -422,6 +423,7 @@ enum Action {
     SelectRuleTarget(usize),
     TargetPage(usize),
     OpenAboutSite,
+    OpenGitHub,
     RefreshSubscription(u64),
     EditSubscriptionUrl(u64),
     RenameSubscription(u64),
@@ -472,6 +474,7 @@ struct App {
     updates: UiUpdates,
     next_subscription_refresh: std::collections::HashMap<u64, Instant>,
     refreshing_subscription: Option<u64>,
+    refresh_ticket: u64,
     pending_subscription: Option<(u64, String, Result<ImportReport, String>)>,
     subscription_errors: std::collections::HashSet<u64>,
     subscription_changes_pending: bool,
@@ -500,6 +503,9 @@ struct App {
     note_value: String,
     note_parent: Option<Modal>,
     pending_notes: Option<std::collections::BTreeMap<String, String>>,
+    pending_groups: Option<Vec<Vec<String>>>,
+    other_rule_values: String,
+    antigravity_template: bool,
     imported_routing: Option<multilink_core::RoutingConfig>,
     selecting_target: bool,
     target_page: usize,
@@ -542,11 +548,14 @@ impl App {
             return;
         };
         self.refreshing_subscription = Some(id);
+        self.refresh_ticket += 1;
+        let ticket = self.refresh_ticket;
         let updates = self.updates.clone();
+        let connected = self.connected;
         std::thread::spawn(move || {
-            let result = multilink_mihomo::fetch_subscription(&url)
+            let result = multilink_mihomo::fetch_subscription_with_proxy(&url, connected)
                 .and_then(|body| multilink_core::import_subscription(&body));
-            let _ = updates.send(Update::SubscriptionFetched(id, url, result));
+            let _ = updates.send(Update::SubscriptionFetched(ticket, id, url, result));
         });
         self.redraw();
     }
@@ -655,6 +664,7 @@ impl App {
                 Ok(rules) => {
                     s.rules = rules;
                     multilink_core::initialize_ru_routes(&mut s);
+                    multilink_core::retain_rule_groups(&mut s.rule_groups, &s.rules);
                     let notice = if s.nodes.is_empty() {
                         "Введите ключ или добавьте свою подписку"
                     } else {
@@ -674,6 +684,7 @@ impl App {
             updates,
             next_subscription_refresh: Default::default(),
             refreshing_subscription: None,
+            refresh_ticket: 0,
             pending_subscription: None,
             subscription_errors: Default::default(),
             subscription_changes_pending: false,
@@ -731,6 +742,9 @@ impl App {
             note_value: String::new(),
             note_parent: None,
             pending_notes: None,
+            pending_groups: None,
+            other_rule_values: String::new(),
+            antigravity_template: false,
             imported_routing: None,
             selecting_target: false,
             target_page: 0,
@@ -807,8 +821,10 @@ impl App {
                 continue;
             }
             match update {
-                Update::SubscriptionFetched(id, url, result) => {
-                    self.pending_subscription = Some((id, url, result));
+                Update::SubscriptionFetched(ticket, id, url, result) => {
+                    if self.refresh_ticket == ticket && self.refreshing_subscription == Some(id) {
+                        self.pending_subscription = Some((id, url, result));
+                    }
                 }
                 Update::AntigravityChecked(name, result) => {
                     self.antigravity_checking = false;
@@ -959,6 +975,10 @@ impl App {
                             report.nodes,
                         ) {
                             Ok(id) => {
+                                if self.refreshing_subscription == Some(id) {
+                                    self.refreshing_subscription = None;
+                                    self.pending_subscription = None;
+                                }
                                 self.next_subscription_refresh
                                     .insert(id, Instant::now() + SUBSCRIPTION_INTERVAL);
                                 self.subscription_errors.remove(&id);
@@ -1072,9 +1092,14 @@ impl App {
                 self.page = page;
                 self.offset = 0;
             }
-            Action::OpenAboutSite => {
-                if multilink_platform::open_project_site().is_err() {
-                    self.notify("Не удалось открыть браузер: https://desk.everty.ru/opensource");
+            Action::OpenAboutSite | Action::OpenGitHub => {
+                let url = if action == Action::OpenGitHub {
+                    "https://github.com/vaalimusic/EvertyMultiLink"
+                } else {
+                    "https://desk.everty.ru/opensource"
+                };
+                if multilink_platform::open_project_site(url).is_err() {
+                    self.notify(format!("Не удалось открыть браузер: {url}"));
                 }
             }
             Action::RefreshSubscription(id) if !self.busy => {
@@ -1127,6 +1152,9 @@ impl App {
                         } else {
                             &source.name
                         });
+                    if self.modal == Some(Modal::SubscriptionUrl) {
+                        self.edit.set_caret(0, false);
+                    }
                     self.edit_scroll = 0.0;
                     self.field_focused = true;
                     self.reset_caret();
@@ -1227,6 +1255,7 @@ impl App {
                 self.target_page = 0;
                 self.note_draft.clear();
                 self.pending_notes = None;
+                self.pending_groups = None;
                 self.imported_routing = None;
             }
             Action::Close => {}
@@ -1240,6 +1269,9 @@ impl App {
                 self.editing_rule = None;
                 self.note_draft.clear();
                 self.pending_notes = None;
+                self.pending_groups = None;
+                self.other_rule_values.clear();
+                self.antigravity_template = false;
                 self.modal = Some(match action {
                     Action::Import => Modal::Import,
                     Action::AddRuDomains => Modal::RuRule,
@@ -1258,6 +1290,9 @@ impl App {
                         multilink_core::rule_key(rule) == "PROCESS-NAME,antigravity.exe"
                     }) {
                         self.action(Action::EditRule(index));
+                        if !self.antigravity_template {
+                            self.other_rule_values = "googleapis.com".into();
+                        }
                     } else {
                         let preferred = self
                             .settings
@@ -1274,12 +1309,31 @@ impl App {
                                 self.rule_targets().iter().position(|(id, _)| *id == target)
                             })
                             .unwrap_or(1);
+                        self.other_rule_values = "googleapis.com".into();
                     }
+                    self.antigravity_template = true;
                 }
                 self.selecting_target = false;
                 self.target_page = self.rule_target / 18;
                 self.field_focused = true;
                 self.reset_caret();
+            }
+            Action::RuleField(process)
+                if !self.busy && matches!(self.modal, Some(Modal::Rule | Modal::ProcessRule)) =>
+            {
+                if process != (self.modal == Some(Modal::ProcessRule)) {
+                    let previous = self.edit.text().to_owned();
+                    self.edit.set_text(&self.other_rule_values);
+                    self.other_rule_values = previous;
+                    self.modal = Some(if process {
+                        Modal::ProcessRule
+                    } else {
+                        Modal::Rule
+                    });
+                    self.edit_scroll = 0.0;
+                    self.field_focused = true;
+                    self.reset_caret();
+                }
             }
             Action::CheckAntigravity if !self.busy && !self.antigravity_checking => {
                 let target = self
@@ -1318,6 +1372,9 @@ impl App {
                             .cloned()
                             .unwrap_or_default();
                         self.pending_notes = None;
+                        self.pending_groups = None;
+                        self.other_rule_values.clear();
+                        self.antigravity_template = false;
                         self.modal = Some(match *kind {
                             "RULE-SET" => Modal::RuRule,
                             "PROCESS-NAME" => Modal::ProcessRule,
@@ -1328,6 +1385,35 @@ impl App {
                         } else {
                             value
                         });
+                        if *kind != "RULE-SET" {
+                            let keys = self.rule_members(index);
+                            let mut processes = Vec::new();
+                            let mut addresses = Vec::new();
+                            for key in &keys {
+                                if let Some((kind, value)) = key.split_once(',') {
+                                    if kind == "PROCESS-NAME" {
+                                        processes.push(value);
+                                    } else {
+                                        addresses.push(value);
+                                    }
+                                }
+                            }
+                            let process = *kind == "PROCESS-NAME";
+                            let (current, other) = if process {
+                                (processes.join(", "), addresses.join(", "))
+                            } else {
+                                (addresses.join(", "), processes.join(", "))
+                            };
+                            self.edit.set_text(&current);
+                            self.other_rule_values = other;
+                            self.antigravity_template =
+                                self.settings.rule_groups.iter().any(|group| {
+                                    group == &keys
+                                        && group
+                                            .iter()
+                                            .any(|key| key == "PROCESS-NAME,antigravity.exe")
+                                });
+                        }
                         self.edit_scroll = 0.0;
                         self.selecting_target = false;
                         self.rule_target = self
@@ -1366,7 +1452,12 @@ impl App {
                 self.reset_caret();
             }
             Action::Submit if !self.busy => {
-                if self.edit.is_empty() && self.modal != Some(Modal::Note) {
+                if self.edit.is_empty()
+                    && !matches!(
+                        self.modal,
+                        Some(Modal::Note | Modal::Rule | Modal::ProcessRule)
+                    )
+                {
                     return;
                 }
                 match self.modal {
@@ -1459,6 +1550,10 @@ impl App {
                                 self.settings.access = None;
                             }
                             multilink_core::remove_subscription(&mut self.settings, id);
+                            if self.refreshing_subscription == Some(id) {
+                                self.refreshing_subscription = None;
+                                self.pending_subscription = None;
+                            }
                             self.next_subscription_refresh.remove(&id);
                             self.subscription_errors.remove(&id);
                             self.offset = 0;
@@ -1472,6 +1567,8 @@ impl App {
                     Some(Modal::ClearLibrary) => {
                         self.settings.nodes.clear();
                         self.settings.subscriptions.clear();
+                        self.refreshing_subscription = None;
+                        self.pending_subscription = None;
                         self.next_subscription_refresh.clear();
                         self.subscription_errors.clear();
                         self.settings.access = None;
@@ -1488,11 +1585,7 @@ impl App {
                             .get(self.rule_target)
                             .map(|(id, _)| id.clone())
                             .unwrap_or_else(|| "DIRECT".into());
-                        match multilink_core::rules_from_input(
-                            self.edit.text(),
-                            self.modal == Some(Modal::ProcessRule),
-                            &target,
-                        ) {
+                        match self.parse_rule_fields(&target) {
                             Ok(rules) => self.submit_many_rules(rules),
                             Err(error) => self.notify(error),
                         }
@@ -1607,9 +1700,8 @@ impl App {
             }
             Action::DeleteRule(i) if !self.busy => {
                 let mut rules = self.settings.rules.clone();
-                if i < rules.len() {
-                    rules.remove(i);
-                }
+                let keys = self.rule_members(i);
+                rules.retain(|rule| !keys.contains(&multilink_core::rule_key(rule)));
                 self.change_routing(rules, self.settings.policy);
             }
             Action::ClearServers if !self.connected && !self.busy => {
@@ -1713,6 +1805,10 @@ impl App {
                 .iter()
                 .any(|rule| multilink_core::rule_key(rule) == *key)
         });
+        if let Some(groups) = self.pending_groups.take() {
+            self.settings.rule_groups = groups;
+        }
+        multilink_core::retain_rule_groups(&mut self.settings.rule_groups, &self.settings.rules);
     }
     fn apply_imported_routes(&mut self, replace: bool) {
         let Some(config) = self.imported_routing.clone() else {
@@ -1724,11 +1820,51 @@ impl App {
             config.merged(&self.settings)
         };
         self.pending_notes = Some(config.notes);
+        self.pending_groups = Some(config.groups);
         self.offset = 0;
         self.change_routing(config.rules, config.policy);
     }
     fn submit_single_rule(&mut self, rule: String) {
         self.submit_many_rules(vec![rule]);
+    }
+    fn rule_members(&self, index: usize) -> Vec<String> {
+        let Some(rule) = self.settings.rules.get(index) else {
+            return Vec::new();
+        };
+        let key = multilink_core::rule_key(rule);
+        self.settings
+            .rule_groups
+            .iter()
+            .find(|group| group.contains(&key))
+            .cloned()
+            .unwrap_or_else(|| vec![key])
+    }
+    fn parse_rule_fields(&self, target: &str) -> Result<Vec<String>, String> {
+        let current = self.edit.text().trim();
+        let other = self.other_rule_values.trim();
+        let (addresses, processes) = if self.modal == Some(Modal::ProcessRule) {
+            (other, current)
+        } else {
+            (current, other)
+        };
+        let mut rules = Vec::new();
+        if !processes.is_empty() {
+            rules.extend(multilink_core::rules_from_input(processes, true, target)?);
+        }
+        if self.antigravity_template
+            && !rules
+                .iter()
+                .any(|r| multilink_core::rule_key(r) == "PROCESS-NAME,antigravity.exe")
+        {
+            return Err("Оставьте Antigravity.exe в шаблоне или создайте обычное правило".into());
+        }
+        if !addresses.is_empty() {
+            rules.extend(multilink_core::rules_from_input(addresses, false, target)?);
+        }
+        if rules.is_empty() {
+            return Err("Введите домен, IP или имя приложения".into());
+        }
+        Ok(rules)
     }
     fn submit_many_rules(&mut self, additions: Vec<String>) {
         let keys: Vec<_> = additions
@@ -1736,25 +1872,47 @@ impl App {
             .map(|rule| multilink_core::rule_key(rule))
             .collect();
         let mut rules = self.settings.rules.clone();
+        let mut replaced = self
+            .editing_rule
+            .map(|i| self.rule_members(i))
+            .unwrap_or_default();
         if let Some(index) = self.editing_rule {
-            if rules.iter().enumerate().any(|(i, existing)| {
-                i != index && keys.contains(&multilink_core::rule_key(existing))
-            }) {
-                self.notify("Для этого адреса или приложения уже есть другое правило. Откройте его и измените маршрут.");
-                return;
-            }
             if index >= rules.len() {
                 self.notify("Правило больше не существует");
                 return;
             }
-            rules.splice(index..=index, additions.iter().cloned());
+            for existing in &rules {
+                let key = multilink_core::rule_key(existing);
+                if !keys.contains(&key) || replaced.contains(&key) {
+                    continue;
+                }
+                if self.antigravity_template
+                    && additions.contains(existing)
+                    && !self
+                        .settings
+                        .rule_groups
+                        .iter()
+                        .any(|group| group.contains(&key))
+                {
+                    replaced.push(key);
+                } else {
+                    self.notify("Для этого адреса или приложения уже есть другое правило. Откройте его и измените маршрут.");
+                    return;
+                }
+            }
+            let insertion = rules[..index]
+                .iter()
+                .filter(|rule| !replaced.contains(&multilink_core::rule_key(rule)))
+                .count();
+            rules.retain(|rule| !replaced.contains(&multilink_core::rule_key(rule)));
+            rules.splice(insertion..insertion, additions.iter().cloned());
         } else {
             rules.retain(|existing| !keys.contains(&multilink_core::rule_key(existing)));
             rules.extend(additions.iter().cloned());
         }
         let mut notes = self.settings.rule_notes.clone();
-        if let Some(old) = self.editing_rule.and_then(|i| self.settings.rules.get(i)) {
-            notes.remove(&multilink_core::rule_key(old));
+        for old in &replaced {
+            notes.remove(old);
         }
         for rule in &additions {
             let key = multilink_core::rule_key(rule);
@@ -1764,6 +1922,17 @@ impl App {
             }
         }
         self.pending_notes = Some(notes);
+        let mut groups = self.settings.rule_groups.clone();
+        for group in &mut groups {
+            group.retain(|key| !keys.contains(key) && !replaced.contains(key));
+        }
+        if (matches!(self.modal, Some(Modal::Rule | Modal::ProcessRule)) && keys.len() > 1)
+            || self.antigravity_template
+        {
+            groups.push(keys);
+        }
+        multilink_core::retain_rule_groups(&mut groups, &rules);
+        self.pending_groups = Some(groups);
         self.change_routing(rules, self.settings.policy);
     }
     fn redraw(&self) {
@@ -3007,6 +3176,36 @@ mod routing_workflow_tests {
         );
         assert!(!app.settings.nodes[0].enabled);
         assert!(app.modal.is_none());
+    }
+
+    #[test]
+    fn antigravity_migrates_a_legacy_rule_and_edits_mixed_conditions_as_one_group() {
+        let mut app = App::new(None);
+        let (tx, _commands) = mpsc::channel();
+        app.tx = tx;
+        app.settings = Settings::default();
+        app.settings.rules = vec!["PROCESS-NAME,antigravity.exe,MULTILINK".into()];
+        app.action(Action::AddAntigravity);
+        app.edit.set_text("Antigravity.exe, helper.exe");
+        app.action(Action::RuleField(false));
+        assert_eq!(app.edit.text(), "googleapis.com");
+        app.edit.set_text("googleapis.com, 192.0.2.4");
+        app.action(Action::Submit);
+        assert_eq!(app.settings.rules.len(), 4);
+        assert_eq!(app.settings.rule_groups.len(), 1);
+        let exported = multilink_core::RoutingConfig::from_settings(&app.settings)
+            .encode()
+            .unwrap();
+        let roundtrip = multilink_core::RoutingConfig::decode(&exported).unwrap();
+        assert_eq!(roundtrip.groups, app.settings.rule_groups);
+        app.action(Action::AddAntigravity);
+        app.action(Action::RuleField(false));
+        assert!(app.edit.text().contains("192.0.2.4"));
+        app.edit.set_text("googleapis.com");
+        app.action(Action::Submit);
+        assert_eq!(app.settings.rules.len(), 3);
+        app.action(Action::DeleteRule(0));
+        assert!(app.settings.rules.is_empty() && app.settings.rule_groups.is_empty());
     }
 
     #[test]

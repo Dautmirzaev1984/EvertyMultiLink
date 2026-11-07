@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="horizontal"
+    android:gravity="center_vertical"
+    android:background="@drawable/card_tv_focusable"
+    android:padding="12dp"
+    android:layout_marginBottom="8dp"
+    android:focusable="true">
+
+    <TextView
+        android:id="@+id/tvRuleActionBadge"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="DIRECT"
+        android:textColor="@color/accent_green"
+        android:textSize="11sp"
+        android:textStyle="bold"
+        android:background="#1E293B"
+        android:paddingHorizontal="8dp"
+        android:paddingVertical="4dp"
+        android:layout_marginEnd="10dp" />
+
+    <LinearLayout
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:orientation="vertical">
+
+        <TextView
+            android:id="@+id/tvRulePattern"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="rutracker.org"
+            android:textColor="@color/white"
+            android:textSize="14sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/tvRuleType"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="DOMAIN-KEYWORD"
+            android:textColor="@color/text_muted"
+            android:textSize="10sp" />
+    </LinearLayout>
+
+    <ImageView
+        android:id="@+id/btnDeleteRule"
+        android:layout_width="32dp"
+        android:layout_height="32dp"
+        android:src="@android:drawable/ic_menu_close_clear_cancel"
+        android:tint="@color/accent_orange"
+        android:background="?android:attr/selectableItemBackgroundBorderless"
+        android:padding="4dp"
+        android:contentDescription="Delete rule"
+        android:focusable="true" />
+</LinearLayout>

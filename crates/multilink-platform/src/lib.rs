@@ -1,12 +1,10 @@
 use std::{io, path::PathBuf};
 
 #[cfg(windows)]
-pub fn open_project_site() -> io::Result<()> {
+pub fn open_project_site(url: &str) -> io::Result<()> {
     use windows_sys::Win32::UI::{Shell::ShellExecuteW, WindowsAndMessaging::SW_SHOWNORMAL};
     let verb: Vec<u16> = "open\0".encode_utf16().collect();
-    let url: Vec<u16> = "https://desk.everty.ru/opensource\0"
-        .encode_utf16()
-        .collect();
+    let url: Vec<u16> = url.encode_utf16().chain(Some(0)).collect();
     let result = unsafe {
         ShellExecuteW(
             std::ptr::null_mut(),
@@ -24,10 +22,8 @@ pub fn open_project_site() -> io::Result<()> {
     }
 }
 #[cfg(not(windows))]
-pub fn open_project_site() -> io::Result<()> {
-    Err(io::Error::other(
-        "Откройте https://desk.everty.ru/opensource",
-    ))
+pub fn open_project_site(url: &str) -> io::Result<()> {
+    Err(io::Error::other(format!("Откройте {url}")))
 }
 
 #[cfg(windows)]

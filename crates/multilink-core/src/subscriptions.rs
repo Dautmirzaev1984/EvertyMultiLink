@@ -30,6 +30,17 @@ pub fn subscription_host(url: &str) -> String {
         .unwrap_or_else(|| "Подписка".into())
 }
 
+fn same_subscription_url(first: &str, second: &str) -> bool {
+    let normalize = |input: &str| {
+        let mut url = Url::parse(input).ok()?;
+        url.set_fragment(None);
+        Some(url)
+    };
+    normalize(first)
+        .zip(normalize(second))
+        .is_some_and(|(a, b)| a == b)
+}
+
 fn fingerprint(node: &Node) -> String {
     let mut proxy = node.proxy.clone();
     proxy.remove(Value::from("name"));
@@ -42,7 +53,7 @@ pub fn update_subscription(
     settings: &mut Settings,
     id: Option<u64>,
     url: &str,
-    nodes: Vec<Node>,
+    mut nodes: Vec<Node>,
 ) -> Result<u64, String> {
     let url = subscription_url(url)?;
     if nodes.is_empty() {
@@ -52,7 +63,7 @@ pub fn update_subscription(
         settings
             .subscriptions
             .iter()
-            .find(|s| s.url == url)
+            .find(|s| same_subscription_url(&s.url, &url))
             .map(|s| s.id)
     });
     if let Some(id) = existing {
@@ -62,7 +73,7 @@ pub fn update_subscription(
         if settings
             .subscriptions
             .iter()
-            .any(|s| s.id != id && s.url == url)
+            .any(|s| s.id != id && same_subscription_url(&s.url, &url))
         {
             return Err("Эта ссылка уже есть в другой подписке".into());
         }
@@ -76,13 +87,21 @@ pub fn update_subscription(
             .unwrap_or(0)
             .saturating_add(1)
     });
+    let fresh_keys: HashSet<_> = nodes.iter().map(fingerprint).collect();
     let previous_enabled: std::collections::HashMap<_, _> = settings
         .nodes
         .iter()
-        .filter(|n| n.subscription_ids.contains(&id))
+        .filter(|n| {
+            !n.manually_added && n.subscription_ids == [id] && !fresh_keys.contains(&fingerprint(n))
+        })
         .map(|n| (n.name.clone(), n.enabled))
         .collect();
-    let fresh_keys: HashSet<_> = nodes.iter().map(fingerprint).collect();
+    let exclusive: HashSet<_> = settings
+        .nodes
+        .iter()
+        .filter(|node| !node.manually_added && node.subscription_ids == [id])
+        .map(fingerprint)
+        .collect();
     let mut old: Vec<Node> = settings.nodes.clone();
     for node in &mut old {
         node.subscription_ids.retain(|source| *source != id);
@@ -96,11 +115,43 @@ pub fn update_subscription(
         .enumerate()
         .map(|(i, n)| (fingerprint(n), i))
         .collect();
-    let mut names: HashSet<_> = updated.iter().map(|n| n.name.clone()).collect();
+    let mut names: HashSet<_> = updated
+        .iter()
+        .filter(|node| !exclusive.contains(&fingerprint(node)))
+        .map(|node| node.name.clone())
+        .collect();
+    // An added server with a duplicate label should not take the name of an
+    // existing endpoint that the subscription still lists with that label.
+    let mut unchanged = HashSet::new();
+    for node in &nodes {
+        let key = fingerprint(node);
+        if exclusive.contains(&key)
+            && by_key
+                .get(&key)
+                .is_some_and(|i| updated[*i].name == node.name)
+        {
+            names.insert(node.name.clone());
+            unchanged.insert(key);
+        }
+    }
+    nodes.sort_by_cached_key(|node| !by_key.contains_key(&fingerprint(node)));
+    let mut matched = HashSet::new();
+    let mut renamed = std::collections::HashMap::new();
     for mut node in nodes {
         let key = fingerprint(&node);
+        if !matched.insert(key.clone()) {
+            continue;
+        }
         if let Some(index) = by_key.get(&key) {
             let known = &mut updated[*index];
+            if exclusive.contains(&key) && !unchanged.contains(&key) {
+                let name = unique_subscription_name(&node.name, &mut names);
+                if known.name != name {
+                    renamed.insert(server_route_target(&known.name), server_route_target(&name));
+                    known.name = name;
+                }
+            }
+            known.spider_x = node.spider_x;
             if !known.subscription_ids.contains(&id) {
                 known.subscription_ids.push(id);
             }
@@ -110,13 +161,7 @@ pub fn update_subscription(
             if let Some(enabled) = previous_enabled.get(&node.name) {
                 node.enabled = *enabled;
             }
-            let base = node.name.clone();
-            let mut suffix = 2;
-            while node.name == "MULTILINK" || names.contains(&node.name) {
-                node.name = format!("{base} ({suffix})");
-                suffix += 1;
-            }
-            names.insert(node.name.clone());
+            node.name = unique_subscription_name(&node.name, &mut names);
             by_key.insert(key, updated.len());
             updated.push(node);
         }
@@ -138,7 +183,22 @@ pub fn update_subscription(
         });
     }
     settings.nodes = updated;
+    for rule in &mut settings.rules {
+        if let Some(target) = rule.split(',').nth(2).and_then(|old| renamed.get(old)) {
+            *rule = format!("{},{target}", rule_key(rule));
+        }
+    }
     Ok(id)
+}
+
+fn unique_subscription_name(base: &str, names: &mut HashSet<String>) -> String {
+    let mut name = base.to_owned();
+    let mut suffix = 2;
+    while name == "MULTILINK" || !names.insert(name.clone()) {
+        name = format!("{base} ({suffix})");
+        suffix += 1;
+    }
+    name
 }
 
 pub fn remove_subscription(settings: &mut Settings, id: u64) {
@@ -239,6 +299,31 @@ mod tests {
             settings.nodes[0].proxy[Value::from("port")].as_u64(),
             Some(444)
         );
+    }
+    #[test]
+    fn refresh_updates_provider_labels_and_keeps_pinned_routes() {
+        let mut settings = Settings::default();
+        let url = "https://one.invalid/private#name";
+        let id = update_subscription(&mut settings, None, url, nodes(443)).unwrap();
+        settings.nodes[0].enabled = false;
+        settings.rules = vec!["DOMAIN-SUFFIX,example.org,DE-test".into()];
+        let mut fresh = nodes(443);
+        fresh[0].name = "US-new".into();
+        let updated_id = update_subscription(
+            &mut settings,
+            None,
+            "https://one.invalid/private#new-name",
+            fresh,
+        )
+        .unwrap();
+        assert_eq!(id, updated_id);
+        assert_eq!(
+            settings.subscriptions[0].url,
+            "https://one.invalid/private#new-name"
+        );
+        assert_eq!(settings.nodes[0].name, "US-new");
+        assert!(!settings.nodes[0].enabled);
+        assert_eq!(settings.rules, ["DOMAIN-SUFFIX,example.org,US-new"]);
     }
     #[test]
     fn manual_import_and_validation_failures_keep_library_unchanged() {

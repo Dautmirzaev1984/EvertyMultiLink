@@ -1,0 +1,108 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:background="@color/bg_card"
+    android:orientation="vertical"
+    android:padding="24dp">
+
+    <TextView
+        android:id="@+id/tvLanTitle"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center"
+        android:text="📺 Синхронизация подписки на ТВ"
+        android:textColor="@color/text_primary"
+        android:textSize="18sp"
+        android:textStyle="bold" />
+
+    <TextView
+        android:id="@+id/tvLanInstructions"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:gravity="center"
+        android:text="@string/lan_sync_desc"
+        android:textColor="@color/text_secondary"
+        android:textSize="13sp" />
+
+    <!-- QR Code Card -->
+    <LinearLayout
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center_horizontal"
+        android:layout_marginTop="16dp"
+        android:background="@drawable/card_background"
+        android:padding="12dp">
+
+        <ImageView
+            android:id="@+id/ivLanQr"
+            android:layout_width="220dp"
+            android:layout_height="220dp"
+            android:contentDescription="QR Code for TV sync" />
+    </LinearLayout>
+
+    <!-- Web URL -->
+    <TextView
+        android:id="@+id/tvLanUrl"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="12dp"
+        android:gravity="center"
+        android:text="http://192.168.1.100:8899"
+        android:textColor="@color/accent_cyan"
+        android:textSize="16sp"
+        android:textStyle="bold" />
+
+    <!-- PIN -->
+    <LinearLayout
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center_horizontal"
+        android:layout_marginTop="8dp"
+        android:gravity="center_vertical"
+        android:orientation="horizontal">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="ПИН-код для подтверждения: "
+            android:textColor="@color/text_muted"
+            android:textSize="13sp" />
+
+        <TextView
+            android:id="@+id/tvLanPin"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="7492"
+            android:textColor="@color/accent_green"
+            android:textSize="18sp"
+            android:textStyle="bold" />
+    </LinearLayout>
+
+    <!-- Status text -->
+    <TextView
+        android:id="@+id/tvLanStatus"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="16dp"
+        android:background="@drawable/card_background"
+        android:gravity="center"
+        android:padding="10dp"
+        android:text="@string/lan_sync_waiting"
+        android:textColor="@color/text_secondary"
+        android:textSize="13sp" />
+
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/btnLanClose"
+        android:layout_width="match_parent"
+        android:layout_height="48dp"
+        android:layout_marginTop="20dp"
+        android:background="@drawable/btn_secondary_selector"
+        app:backgroundTint="@null"
+        android:focusable="true"
+        android:text="Закрыть"
+        android:textColor="@color/text_primary" />
+
+</LinearLayout>

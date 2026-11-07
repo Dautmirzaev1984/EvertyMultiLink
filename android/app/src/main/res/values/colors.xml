@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Everty Desktop Palette -->
+    <color name="bg_dark">#0D1117</color>
+    <color name="bg_side">#10151C</color>
+    <color name="bg_card">#161C24</color>
+    <color name="border_card">#272F3B</color>
+    <color name="text_primary">#EBF1F7</color>
+    <color name="text_muted">#8391A2</color>
+    <color name="text_secondary">#94A3B8</color>
+
+    <!-- Signature Brand Colors -->
+    <color name="accent_mint">#6FE6B4</color>
+    <color name="accent_soft">#1C342D</color>
+    <color name="accent_cyan">#6FE6B4</color>
+    <color name="accent_green">#6FE6B4</color>
+    <color name="accent_gold">#F1C25C</color>
+    <color name="accent_orange">#F1C25C</color>
+    <color name="accent_red">#F87171</color>
+
+    <color name="white">#FFFFFF</color>
+    <color name="black">#000000</color>
+    <color name="transparent">#00000000</color>
+    <!-- Compatibility Aliases -->
+    <color name="accent_blue">#6FE6B4</color>
+    <color name="accent_blue_hover">#1C342D</color>
+    <color name="border_focused">#6FE6B4</color>
+</resources>

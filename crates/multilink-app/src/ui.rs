@@ -239,7 +239,7 @@ impl Canvas<'_> {
             | Action::Language
             | Action::SelectLanguage(_)
             | Action::HelpSection(_) => true,
-            Action::OpenAboutSite => true,
+            Action::OpenAboutSite | Action::OpenGitHub => true,
             Action::RankServers => true,
             Action::Compact | Action::Expanded | Action::ToggleAutostart => true,
             Action::Connect | Action::Close | Action::Paste | Action::Submit => !self.busy,
@@ -250,6 +250,7 @@ impl Canvas<'_> {
             | Action::AddProcessRule
             | Action::AddAntigravity
             | Action::CheckAntigravity
+            | Action::RuleField(_)
             | Action::DeleteRule(_)
             | Action::EditRule(_)
             | Action::RuleNote
@@ -352,9 +353,25 @@ fn bytes(value: f64) -> String {
 impl App {
     pub(super) fn paint(&mut self, w: f64, h: f64) -> PaintList {
         let language = self.language();
+        let route_rows: Vec<_> = if self.page == Page::Routing {
+            let hidden: std::collections::HashSet<_> = self
+                .settings
+                .rule_groups
+                .iter()
+                .flat_map(|group| group.iter().skip(1))
+                .collect();
+            self.settings
+                .rules
+                .iter()
+                .enumerate()
+                .filter(|(_, rule)| !hidden.contains(&multilink_core::rule_key(rule)))
+                .collect()
+        } else {
+            Vec::new()
+        };
         let count = match self.page {
             Page::Servers | Page::Dashboard => self.settings.nodes.len(),
-            Page::Routing => self.settings.rules.len(),
+            Page::Routing => route_rows.len(),
             Page::Subscriptions => self.settings.subscriptions.len(),
             Page::Help => help::COUNT,
             _ => 0,
@@ -1208,33 +1225,32 @@ impl App {
                     } else {
                         c.text(x + width - 65.0, y + 10.0, "…", 16.0, MUTED, true);
                     }
-                    for (index, (label, action)) in [
-                        ("Название", Action::RenameSubscription(source.id)),
-                        ("Ссылка", Action::EditSubscriptionUrl(source.id)),
-                        ("Удалить", Action::DeleteSubscription(source.id)),
-                    ]
-                    .into_iter()
-                    .enumerate()
-                    {
-                        if matches!(action,Action::EditSubscriptionUrl(id) if self.settings.access.as_ref().is_some_and(|a|a.subscription_id==id))
-                        {
-                            c.icon_button(
-                                x + 22.0 + index as f64 * 48.0,
-                                y + 53.0,
-                                18,
-                                Action::Nav(Page::Access),
-                                "Открыть мой доступ",
-                            );
-                        } else {
-                            c.icon_button(
-                                x + 22.0 + index as f64 * 48.0,
-                                y + 53.0,
-                                [1, 4, 2][index],
-                                action,
-                                label,
-                            );
-                        }
-                    }
+                    c.button(
+                        x + 22.0,
+                        y + 53.0,
+                        132.0,
+                        "Название",
+                        Action::RenameSubscription(source.id),
+                        false,
+                    );
+                    let managed = self
+                        .settings
+                        .access
+                        .as_ref()
+                        .is_some_and(|a| a.subscription_id == source.id);
+                    let (label, action) = if managed {
+                        ("Мой доступ", Action::Nav(Page::Access))
+                    } else {
+                        ("Изменить URL", Action::EditSubscriptionUrl(source.id))
+                    };
+                    c.button(x + 164.0, y + 53.0, 148.0, label, action, false);
+                    c.icon_button(
+                        x + 322.0,
+                        y + 53.0,
+                        2,
+                        Action::DeleteSubscription(source.id),
+                        "Удалить",
+                    );
                     c.line(x + 18.0, y + 104.0, width - 36.0);
                 }
             }
@@ -1273,6 +1289,14 @@ impl App {
                     "desk.everty.ru ↗",
                     Action::OpenAboutSite,
                     true,
+                );
+                c.button(
+                    x + 294.0,
+                    398.0,
+                    190.0,
+                    "GitHub ↗",
+                    Action::OpenGitHub,
+                    false,
                 );
                 c.text(
                     x + 28.0,
@@ -1376,16 +1400,27 @@ impl App {
                         false,
                     );
                 } else {
-                    for (i, rule) in self
-                        .settings
-                        .rules
-                        .iter()
+                    for (row, (i, rule)) in route_rows
+                        .into_iter()
                         .enumerate()
                         .skip(self.offset)
                         .take(((h - 458.0) / 58.0).max(1.0) as usize)
                     {
-                        let y = 355.0 + (i - self.offset) as f64 * 58.0;
+                        let y = 355.0 + (row - self.offset) as f64 * 58.0;
                         let parts: Vec<_> = rule.split(',').collect();
+                        let key = multilink_core::rule_key(rule);
+                        let members = self
+                            .settings
+                            .rule_groups
+                            .iter()
+                            .find(|group| group.first() == Some(&key))
+                            .map_or(1, Vec::len);
+                        let value = parts.get(1).copied().unwrap_or_default();
+                        let label = if members > 1 {
+                            format!("{value}  +{}", members - 1)
+                        } else {
+                            value.to_owned()
+                        };
                         c.b.push_clip(LogicalRect::from_xywh(
                             x + 20.0,
                             y,
@@ -1398,7 +1433,7 @@ impl App {
                             if parts.get(1) == Some(&"RU-SITES") {
                                 "Российские сайты"
                             } else {
-                                parts.get(1).unwrap_or(&"")
+                                &label
                             },
                             15.0,
                             TEXT,
@@ -1826,12 +1861,8 @@ impl App {
             let import = modal == Modal::Import || note || subscription;
             let ru = modal == Modal::RuRule;
             let process = modal == Modal::ProcessRule;
-            let antigravity = process
-                && self
-                    .edit
-                    .text()
-                    .trim()
-                    .eq_ignore_ascii_case("Antigravity.exe");
+            let route_fields = matches!(modal, Modal::Rule | Modal::ProcessRule);
+            let antigravity = route_fields && self.antigravity_template;
             c.text(
                 mx + 28.0,
                 my + 23.0,
@@ -1851,8 +1882,6 @@ impl App {
                     "Изменить правило"
                 } else if ru {
                     "Российские сайты"
-                } else if antigravity {
-                    "Выберите сервер. TUN охватывает трафик приложения по имени .exe."
                 } else if process {
                     "Маршрут для приложения"
                 } else {
@@ -1862,35 +1891,65 @@ impl App {
                 TEXT,
                 true,
             );
-            c.text(
-                mx + 28.0,
-                my + 68.0,
-                if note {
-                    "Короткая заметка: назначение правила, приложение или пояснение."
-                } else if modal == Modal::AccessCode {
-                    "Ключ из 6 символов. Например: AB7K9X. Регистр букв не важен."
-                } else if modal == Modal::SubscriptionName {
-                    "Удобное название для списка. До 80 символов."
-                } else if modal == Modal::SubscriptionUrl {
-                    "Новая ссылка применится после успешной загрузки и проверки серверов."
-                } else if import {
-                    "Вставьте HTTPS-ссылку, Everty JSON, VLESS URI, Base64 или YAML."
-                } else if ru {
-                    if self.editing_rule.is_some() {
-                        "Маршрут для локального набора российских сайтов."
+            if route_fields {
+                c.button(
+                    mx + 28.0,
+                    my + 68.0,
+                    155.0,
+                    "Домены и IP",
+                    Action::RuleField(false),
+                    !process,
+                );
+                c.button(
+                    mx + 195.0,
+                    my + 68.0,
+                    155.0,
+                    "Приложения",
+                    Action::RuleField(true),
+                    process,
+                );
+                c.text(
+                    mx + 367.0,
+                    my + 81.0,
+                    "Один маршрут для всех значений",
+                    12.0,
+                    MUTED,
+                    false,
+                );
+            } else {
+                c.text(
+                    mx + 28.0,
+                    my + 68.0,
+                    if note {
+                        "Короткая заметка: назначение правила, приложение или пояснение."
+                    } else if modal == Modal::AccessCode {
+                        "Ключ из 6 символов. Например: AB7K9X. Регистр букв не важен."
+                    } else if modal == Modal::SubscriptionName {
+                        "Удобное название для списка. До 80 символов."
+                    } else if modal == Modal::SubscriptionUrl {
+                        "Новая ссылка применится после успешной загрузки и проверки серверов."
+                    } else if import {
+                        "Вставьте HTTPS-ссылку, Everty JSON, VLESS URI, Base64 или YAML."
+                    } else if ru {
+                        if self.editing_rule.is_some() {
+                            "Маршрут для локального набора российских сайтов."
+                        } else {
+                            "Зоны .ru, .рф и локальный набор российских сервисов."
+                        }
                     } else {
-                        "Зоны .ru, .рф и локальный набор российских сервисов."
-                    }
-                } else if process {
-                    "Имена .exe через запятую: app.exe, helper.exe"
-                } else {
-                    "Домены, ссылки или IP через запятую или точку с запятой."
-                },
-                13.0,
-                MUTED,
-                false,
+                        "Домены, ссылки или IP через запятую или точку с запятой."
+                    },
+                    13.0,
+                    MUTED,
+                    false,
+                );
+            }
+            let field = LogicalRect::from_xywh(
+                mx + 28.0,
+                my + if route_fields { 116.0 } else { 111.0 },
+                604.0,
+                49.0,
             );
-            let field = LogicalRect::from_xywh(mx + 28.0, my + 111.0, 604.0, 49.0);
             self.input_rect = if ru { None } else { Some(field) };
             if ru {
                 c.b.fill_rect(field, BG, 8.0);

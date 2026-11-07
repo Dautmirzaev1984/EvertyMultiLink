@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Everty MultiLink</string>
+    <string name="status_disconnected">Disconnected</string>
+    <string name="status_connecting">Connecting…</string>
+    <string name="status_connected">Connected (Secured)</string>
+    <string name="btn_connect">CONNECT</string>
+    <string name="btn_disconnect">DISCONNECT</string>
+
+    <string name="nav_connect">Connect</string>
+    <string name="nav_servers">Servers</string>
+    <string name="nav_routing">Routing</string>
+    
+    <!-- TV & LAN Sync -->
+    <string name="lan_sync_title">📥 Receive via QR / Wi-Fi</string>
+    <string name="lan_sync_desc">Scan this QR code with your phone camera or open the URL in browser on the same Wi-Fi network to transfer subscription instantly:</string>
+    <string name="lan_sync_pin">Pairing PIN:</string>
+    <string name="lan_sync_waiting">Waiting for config from other device…</string>
+    <string name="lan_sync_success">Subscription successfully received!</string>
+    <string name="btn_share_qr">Share via QR</string>
+    <string name="btn_scan_qr">Scan QR Code</string>
+    <string name="btn_lan_sync">Receive via QR</string>
+    <string name="btn_add_config">Add Subscription / VLESS</string>
+    
+    <!-- Routing Policies -->
+    <string name="policy_balance">Load Balance</string>
+    <string name="policy_latency">Fastest (Lowest RTT)</string>
+    <string name="policy_stable">Fallback</string>
+    <string name="policy_smart">Smart Multi-Link</string>
+    
+    <!-- Split Tunneling -->
+    <string name="split_tunneling_title">Split Tunneling</string>
+    <string name="split_ru_direct">Direct access for RU sites (.ru, banks, state services)</string>
+    
+    <!-- Nodes -->
+    <string name="nodes_title">Servers &amp; Nodes</string>
+    <string name="no_nodes">No nodes added. Add a subscription or VLESS link.</string>
+    <string name="ping_ms">%d ms</string>
+</resources>

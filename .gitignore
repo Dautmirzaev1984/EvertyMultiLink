@@ -21,4 +21,5 @@ __pycache__/
 /preview*.png
 /vendor/mihomo/*.exe
 /vendor/mihomo/mihomo
+/vendor/mihomo/mihomo-*
 

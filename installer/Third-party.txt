@@ -1,0 +1,14 @@
+Everty MultiLink
+Client source: https://github.com/vaalimusic/EvertyMultiLink
+Client license: Everty-MultiLink.LICENSE.txt
+
+Mihomo v1.19.33 by MetaCubeX (GPL-3.0)
+Original release: https://github.com/MetaCubeX/mihomo/releases/tag/v1.19.33
+Source and build files: mihomo-v1.19.33-source.zip
+Upstream source: https://github.com/MetaCubeX/mihomo/tree/v1.19.33
+License: Mihomo.LICENSE.txt
+
+Russian domain rules (category-ru.mrs, MetaCubeX/meta-rules-dat)
+Exact snapshot: https://github.com/MetaCubeX/meta-rules-dat/tree/461790d18a151728e834979aad03cb29e256d181/geo/geosite
+Build recipes and input sources: https://github.com/MetaCubeX/meta-rules-dat
+License: Meta-Rules-Dat.LICENSE.txt

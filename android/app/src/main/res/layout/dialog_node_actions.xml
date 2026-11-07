@@ -1,0 +1,104 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:background="@color/bg_card"
+    android:orientation="vertical"
+    android:padding="20dp">
+
+    <TextView
+        android:id="@+id/tvActionNodeTitle"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:ellipsize="end"
+        android:maxLines="2"
+        android:text="Сервер"
+        android:textColor="@color/text_primary"
+        android:textSize="17sp"
+        android:textStyle="bold" />
+
+    <TextView
+        android:id="@+id/tvActionNodeDetails"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="4dp"
+        android:text="VLESS • REALITY • 443"
+        android:textColor="@color/text_muted"
+        android:textSize="12sp" />
+
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:layout_marginTop="16dp"
+        android:layout_marginBottom="16dp"
+        android:background="@color/border_card" />
+
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/btnPinNode"
+        android:layout_width="match_parent"
+        android:layout_height="50dp"
+        android:background="@drawable/btn_secondary_selector"
+        app:backgroundTint="@null"
+        android:focusable="true"
+        android:gravity="center"
+        android:text="📌 Принудительно зафиксировать этот сервер"
+        android:textColor="@color/accent_cyan"
+        android:textSize="13sp"
+        android:textStyle="bold"
+        android:layout_marginBottom="10dp" />
+
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/btnToggleNodeActive"
+        android:layout_width="match_parent"
+        android:layout_height="50dp"
+        android:background="@drawable/btn_secondary_selector"
+        app:backgroundTint="@null"
+        android:focusable="true"
+        android:gravity="center"
+        android:text="⏸️ Сделать неактивным (Выключить)"
+        android:textColor="@color/accent_orange"
+        android:textSize="13sp"
+        android:textStyle="bold" />
+
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/btnShareNodeQr"
+        android:layout_width="match_parent"
+        android:layout_height="50dp"
+        android:layout_marginTop="10dp"
+        android:background="@drawable/btn_secondary_selector"
+        app:backgroundTint="@null"
+        android:focusable="true"
+        android:gravity="center"
+        android:text="📤 Поделиться этим узлом по QR"
+        android:textColor="@color/accent_cyan"
+        android:textSize="13sp" />
+
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/btnDeleteNode"
+        android:layout_width="match_parent"
+        android:layout_height="50dp"
+        android:layout_marginTop="10dp"
+        android:background="@drawable/btn_secondary_selector"
+        app:backgroundTint="@null"
+        android:focusable="true"
+        android:gravity="center"
+        android:text="🗑️ Удалить сервер"
+        android:textColor="@color/accent_red"
+        android:textSize="13sp"
+        android:textStyle="bold" />
+
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/btnCancelNodeAction"
+        android:layout_width="match_parent"
+        android:layout_height="46dp"
+        android:layout_marginTop="14dp"
+        android:background="@drawable/btn_secondary_selector"
+        app:backgroundTint="@null"
+        android:focusable="true"
+        android:gravity="center"
+        android:text="Отмена"
+        android:textColor="@color/text_muted"
+        android:textSize="13sp" />
+
+</LinearLayout>

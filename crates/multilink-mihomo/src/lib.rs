@@ -19,17 +19,29 @@ pub const PORT: u16 = 17890;
 pub const CONTROLLER: u16 = 19090;
 const TUN_DEVICE: &str = "EvertyMultiLink";
 pub fn binary() -> PathBuf {
-    std::env::var_os("MULTILINK_MIHOMO")
-        .map(PathBuf::from)
-        .unwrap_or_else(|| {
-            PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-                .join("../../vendor/mihomo")
-                .join(if cfg!(windows) {
-                    "mihomo.exe"
-                } else {
-                    "mihomo"
-                })
-        })
+    let name = if cfg!(windows) {
+        "mihomo.exe"
+    } else {
+        "mihomo"
+    };
+    let workspace = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
+    let app = std::env::current_exe().ok();
+    let bundled = app.as_ref().map(|path| path.with_file_name(name));
+    if let Some(path) = bundled.as_ref().filter(|path| path.is_file()) {
+        return path.clone();
+    }
+    if let Some(path) = std::env::var_os("MULTILINK_MIHOMO").filter(|path| !path.is_empty()) {
+        return PathBuf::from(path);
+    }
+    if let (Some(app), Ok(workspace)) = (app, workspace.canonicalize()) {
+        if app
+            .canonicalize()
+            .is_ok_and(|path| path.starts_with(&workspace))
+        {
+            return workspace.join("vendor/mihomo").join(name);
+        }
+    }
+    bundled.unwrap_or_else(|| PathBuf::from(name))
 }
 
 fn runtime_proxy_names(
@@ -257,7 +269,7 @@ impl Engine {
         }
         let binary = binary();
         if !binary.is_file() {
-            return Err("Ядро не найдено. Поместите mihomo.exe в vendor/mihomo".into());
+            return Err("Ядро Mihomo не найдено. Переустановите приложение или положите mihomo.exe рядом с ним".into());
         }
         if settings.tun && multilink_platform::tun_adapter_up(TUN_DEVICE) {
             return Err(
@@ -567,22 +579,52 @@ impl Drop for Engine {
 }
 
 pub fn fetch_subscription(url: &str) -> Result<String, String> {
+    fetch_subscription_with_proxy(url, false)
+}
+
+pub fn fetch_subscription_with_proxy(url: &str, connected: bool) -> Result<String, String> {
     use std::io::Read;
-    let parsed = reqwest::Url::parse(url).map_err(|_| "Некорректный адрес подписки")?;
-    if parsed.scheme() != "https" {
-        return Err("Подписки загружаются только по HTTPS".into());
-    }
-    let client = Client::builder()
-        .no_proxy()
-        .timeout(Duration::from_secs(25))
-        .redirect(reqwest::redirect::Policy::none())
-        .build()
-        .map_err(|_| "Ошибка HTTP-клиента")?;
-    let response = client
-        .get(parsed)
-        .send()
-        .and_then(|r| r.error_for_status())
-        .map_err(|_| "Не удалось скачать подписку: проверьте адрес и доступность")?;
+    let url = multilink_core::subscription_url(url)?;
+    let request = |proxy: bool| {
+        let mut builder = Client::builder()
+            .no_proxy()
+            .user_agent("Mihomo")
+            .timeout(Duration::from_secs(15))
+            .redirect(reqwest::redirect::Policy::custom(|attempt| {
+                let url = attempt.url();
+                if url.scheme() == "https"
+                    && url.username().is_empty()
+                    && url.password().is_none()
+                    && attempt.previous().len() < 5
+                {
+                    attempt.follow()
+                } else {
+                    attempt.error("Unsafe or excessive subscription redirects")
+                }
+            }));
+        if proxy {
+            builder = builder.proxy(
+                reqwest::Proxy::all(format!("http://127.0.0.1:{PORT}"))
+                    .map_err(|_| "Не удалось настроить прокси для подписки".to_owned())?,
+            );
+        }
+        let response = builder
+            .build()
+            .map_err(|_| "Ошибка HTTP-клиента".to_owned())?
+            .get(&url)
+            .header(reqwest::header::CACHE_CONTROL, "no-cache")
+            .send()
+            .map_err(|_| "Не удалось скачать подписку: проверьте адрес и доступность".to_owned())?;
+        if !response.status().is_success() {
+            return Err(format!(
+                "Сервер подписки ответил HTTP {}",
+                response.status().as_u16()
+            ));
+        }
+        Ok(response)
+    };
+    let response =
+        request(false).or_else(|error| if connected { request(true) } else { Err(error) })?;
     let mut bytes = Vec::new();
     response
         .take(4 * 1024 * 1024 + 1)

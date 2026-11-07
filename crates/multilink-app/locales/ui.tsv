@@ -335,6 +335,12 @@ TUN выбран · для подключения нужны права адми
 Маршрут для Antigravity	Antigravity route	Route für Antigravity	Ruta de Antigravity	Antigravity 路由
 Выберите сервер. TUN охватывает трафик приложения по имени .exe.	Choose a server. TUN captures app traffic by executable name.	Server wählen. TUN erfasst App-Verkehr anhand des EXE-Namens.	Elige un servidor. TUN captura el tráfico según el nombre del ejecutable.	请选择服务器。TUN 可按可执行文件名捕获应用流量。
 Проверить регион	Check region	Region prüfen	Comprobar región	检测地区
+Изменить URL	Edit URL	URL ändern	Editar URL	编辑 URL
+Домены и IP	Domains and IPs	Domains und IPs	Dominios e IP	域名与 IP
+Приложения	Apps	Apps	Aplicaciones	应用
+Один маршрут для всех значений	One route for all entries	Eine Route für alle Einträge	Una ruta para todas las entradas	所有条目使用同一路由
+Оставьте Antigravity.exe в шаблоне или создайте обычное правило	Keep Antigravity.exe in the template or create a regular rule	Antigravity.exe in der Vorlage behalten oder eine normale Regel erstellen	Conserva Antigravity.exe en la plantilla o crea una regla normal	请在模板中保留 Antigravity.exe，或创建普通规则
+Введите домен, IP или имя приложения	Enter a domain, IP or application name	Domain, IP oder App-Namen eingeben	Introduce un dominio, IP o nombre de aplicación	输入域名、IP 或应用名称
 Проверка региона…	Checking region…	Region wird geprüft…	Comprobando región…	正在检测地区…
 Проверка региона… · {}	Checking region… · {}	Region wird geprüft… · {}	Comprobando región… · {}	正在检测地区… · {}
 Для проверки выберите конкретный включённый сервер	Choose a specific enabled server to run the check	Wähle einen konkreten aktiven Server für die Prüfung	Elige un servidor habilitado para hacer la prueba	请选择一个已启用的具体服务器进行检测

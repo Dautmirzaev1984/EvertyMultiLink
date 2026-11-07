@@ -122,6 +122,8 @@ pub struct Settings {
     pub rules: Vec<String>,
     #[serde(default)]
     pub rule_notes: std::collections::BTreeMap<String, String>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub rule_groups: Vec<Vec<String>>,
     pub nodes: Vec<Node>,
     pub imports: usize,
     #[serde(default)]
@@ -202,6 +204,7 @@ impl Default for Settings {
             tun: false,
             rules: Vec::new(),
             rule_notes: Default::default(),
+            rule_groups: Vec::new(),
             nodes: Vec::new(),
             imports: 0,
             rank_servers: false,
@@ -220,9 +223,28 @@ pub struct RoutingConfig {
     pub rules: Vec<String>,
     #[serde(default)]
     pub notes: std::collections::BTreeMap<String, String>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub groups: Vec<Vec<String>>,
 }
 pub fn rule_key(rule: &str) -> String {
     rule.split(',').take(2).collect::<Vec<_>>().join(",")
+}
+
+/// Editor groups reference existing clauses with one shared routing target.
+pub fn retain_rule_groups(groups: &mut Vec<Vec<String>>, rules: &[String]) {
+    let targets: std::collections::HashMap<_, _> = rules
+        .iter()
+        .filter(|rule| !rule.starts_with("RULE-SET,"))
+        .filter_map(|rule| rule.rsplit_once(','))
+        .collect();
+    let mut seen = HashSet::new();
+    groups.retain_mut(|group| {
+        let Some(target) = group.iter().find_map(|key| targets.get(key.as_str())) else {
+            return false;
+        };
+        group.retain(|key| targets.get(key.as_str()) == Some(target) && seen.insert(key.clone()));
+        !group.is_empty()
+    });
 }
 impl RoutingConfig {
     pub fn from_settings(settings: &Settings) -> Self {
@@ -231,6 +253,7 @@ impl RoutingConfig {
             policy: settings.policy,
             rules: settings.rules.clone(),
             notes: settings.rule_notes.clone(),
+            groups: settings.rule_groups.clone(),
         }
     }
     pub fn encode(&self) -> Result<String, String> {
@@ -259,11 +282,13 @@ impl RoutingConfig {
         value
             .notes
             .retain(|key, _| value.rules.iter().any(|rule| rule_key(rule) == *key));
+        retain_rule_groups(&mut value.groups, &value.rules);
         Ok(value)
     }
     pub fn merged(&self, settings: &Settings) -> Self {
         let mut rules = settings.rules.clone();
         let mut notes = settings.rule_notes.clone();
+        let mut groups = self.groups.clone();
         for rule in &self.rules {
             let key = rule_key(rule);
             rules.retain(|old| rule_key(old) != key);
@@ -273,10 +298,20 @@ impl RoutingConfig {
                 notes.insert(key, note.clone());
             }
         }
+        let imported: HashSet<_> = self.rules.iter().map(|rule| rule_key(rule)).collect();
+        groups.extend(settings.rule_groups.iter().map(|group| {
+            group
+                .iter()
+                .filter(|key| !imported.contains(*key))
+                .cloned()
+                .collect()
+        }));
+        retain_rule_groups(&mut groups, &rules);
         Self {
             version: 1,
             rules,
             notes,
+            groups,
             policy: self.policy,
         }
     }
