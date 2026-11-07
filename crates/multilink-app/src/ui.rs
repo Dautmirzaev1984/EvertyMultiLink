@@ -1055,37 +1055,23 @@ impl App {
                     true,
                 );
                 c.button(
-                    w - 180.0,
+                    w - 159.0,
                     128.0,
-                    146.0,
+                    125.0,
+                    "+ Добавить",
+                    Action::Import,
+                    true,
+                );
+                c.button(
+                    w - 292.0,
+                    128.0,
+                    125.0,
                     "📥 Принять QR",
                     Action::OpenLanSync,
                     false,
                 );
-                c.button(
-                    w - 365.0,
-                    128.0,
-                    175.0,
-                    "+ Добавить серверы",
-                    Action::Import,
-                    true,
-                );
                 c.icon_button(
-                    w - 509.0,
-                    128.0,
-                    8,
-                    Action::EnableAllServers,
-                    "Включить все серверы",
-                );
-                c.icon_button(
-                    w - 461.0,
-                    128.0,
-                    9,
-                    Action::DisableAllServers,
-                    "Выключить все серверы",
-                );
-                c.icon_button(
-                    w - 413.0,
+                    w - 342.0,
                     128.0,
                     10,
                     Action::RankServers,
@@ -1094,6 +1080,20 @@ impl App {
                     } else {
                         "Сортировать по оценке"
                     },
+                );
+                c.icon_button(
+                    w - 386.0,
+                    128.0,
+                    9,
+                    Action::DisableAllServers,
+                    "Выключить все серверы",
+                );
+                c.icon_button(
+                    w - 430.0,
+                    128.0,
+                    8,
+                    Action::EnableAllServers,
+                    "Включить все серверы",
                 );
                 c.text(
                     x,
@@ -1142,20 +1142,20 @@ impl App {
                     false,
                 );
                 c.button(
-                    w - 180.0,
+                    w - 159.0,
                     149.0,
-                    146.0,
+                    125.0,
+                    "+ Добавить",
+                    Action::Import,
+                    true,
+                );
+                c.button(
+                    w - 292.0,
+                    149.0,
+                    125.0,
                     "📥 Принять QR",
                     Action::OpenLanSync,
                     false,
-                );
-                c.button(
-                    w - 365.0,
-                    149.0,
-                    175.0,
-                    "+ Добавить подписку",
-                    Action::Import,
-                    true,
                 );
                 let manual = self
                     .settings
@@ -2378,9 +2378,14 @@ fn server_list(
         );
         return;
     }
+    let col_qr = x + w - 58.0;
+    let col_badge = x + w - 180.0;
+    let col_delay = x + w - 268.0;
+
     c.text(x + 22.0, y + 14.0, "СЕРВЕР", 10.0, MUTED, true);
-    c.text(x + w - 298.0, y + 14.0, "ЗАДЕРЖКА", 10.0, MUTED, true);
-    c.text(x + w - 151.0, y + 14.0, "СОСТОЯНИЕ", 10.0, MUTED, true);
+    c.text(col_delay, y + 14.0, "ЗАДЕРЖКА", 10.0, MUTED, true);
+    c.text(col_badge, y + 14.0, "СОСТОЯНИЕ", 10.0, MUTED, true);
+    c.text(col_qr + 9.0, y + 14.0, "QR", 10.0, MUTED, true);
     c.line(x + 18.0, y + 42.0, w - 36.0);
     let mut order: Vec<_> = settings.nodes.iter().enumerate().collect();
     if settings.rank_servers {
@@ -2426,15 +2431,16 @@ fn server_list(
             if node.enabled { ACCENT } else { MUTED },
             false,
         );
+        let name_clip_w = (col_delay - (x + 68.0) - 12.0).max(10.0);
         c.b.push_clip(LogicalRect::from_xywh(
             x + 68.0,
             ry,
-            (w - 380.0).max(1.0),
+            name_clip_w,
             55.0,
         ));
         c.raw_text(
             x + 68.0,
-            ry + 4.0,
+            ry + 6.0,
             &shortened(&node.name, 40),
             14.0,
             TEXT,
@@ -2442,7 +2448,7 @@ fn server_list(
         );
         c.text(
             x + 68.0,
-            ry + 27.0,
+            ry + 29.0,
             &node
                 .quality
                 .score()
@@ -2461,8 +2467,8 @@ fn server_list(
         );
         let _ = c.b.pop_clip();
         c.text(
-            x + w - 298.0,
-            ry + 14.0,
+            col_delay,
+            ry + 18.0,
             &if connected {
                 node.delay.map(|d| format!("{d} ms")).unwrap_or("—".into())
             } else {
@@ -2473,8 +2479,8 @@ fn server_list(
             true,
         );
         c.badge(
-            x + w - 172.0,
-            ry + 10.0,
+            col_badge,
+            ry + 14.0,
             if !node.enabled {
                 "Исключён"
             } else if connected && node.delay.is_some() {
@@ -2484,13 +2490,12 @@ fn server_list(
             },
             node.enabled && connected && node.delay.is_some(),
         );
-        c.button(
-            x + w - 62.0,
-            ry + 10.0,
-            48.0,
-            "QR ↗",
+        c.icon_button(
+            col_qr,
+            ry + 8.5,
+            21,
             Action::ShareNode(i),
-            false,
+            "Поделиться узлом (QR)",
         );
         if !c.locked {
             c.hits.push((row, Action::Toggle(i)));

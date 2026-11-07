@@ -21,6 +21,7 @@ pub fn register(renderer: &mut Rgba8Renderer) {
         (18,"M9 14a6 6 0 1 0-6-6a6 6 0 0 0 6 6z M13 12l8 8 M17 16l3-3"),
         (19,"M4 3v18h17 M8 16v-4 M13 16V8 M18 16V4"),
         (20,"M4 3h16v18H4z M8 8h8 M8 12h8 M8 16h5"),
+        (21,"M4 4h5v5H4z M15 4h5v5h-5z M4 15h5v5H4z M14 14h2v2h-2z M18 14h2v2h-2z M14 18h2v2h-2z M18 18h2v2h-2z"),
     ] {
         let svg=format!(r#"<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="-1 -1 26 26"><path d="{path}" fill="none" stroke="white" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>"#);
         renderer.register_svg_icon(IconId(id),&svg).expect("Application SVG icon");
