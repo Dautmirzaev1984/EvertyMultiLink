@@ -4,6 +4,7 @@
 *.lock text eol=lf
 *.md text eol=lf
 *.json text eol=lf
+*.tsv text eol=lf
 *.py text eol=lf
 *.png binary
 *.mrs binary

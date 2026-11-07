@@ -110,6 +110,7 @@ impl InputView {
 }
 
 struct Canvas<'a> {
+    language: i18n::Language,
     tooltip: Option<(LogicalRect, String)>,
     b: PaintBuilder,
     text: &'a mut TextSystem,
@@ -153,6 +154,7 @@ impl Canvas<'_> {
     }
     fn paint_tooltip(&mut self, w: f64, h: f64) {
         if let Some((anchor, label)) = self.tooltip.take() {
+            let label = i18n::tr(self.language, &label);
             let width = (label.chars().count() as f64 * 6.6 + 24.0).clamp(120.0, 420.0);
             let x = anchor.left().min(w - width - 12.0).max(12.0);
             let y = if anchor.bottom() + 48.0 > h {
@@ -181,6 +183,11 @@ impl Canvas<'_> {
         self.b.stroke_rect(rect, LINE, 1.0, 12.0);
     }
     fn text(&mut self, x: f64, y: f64, value: &str, size: f64, color: Color, bold: bool) {
+        let translated = i18n::tr(self.language, value);
+        let value = translated.as_ref();
+        self.raw_text(x, y, value, size, color, bold);
+    }
+    fn raw_text(&mut self, x: f64, y: f64, value: &str, size: f64, color: Color, bold: bool) {
         let style = TextStyle {
             family: FontFamily::Named("Segoe UI".into()),
             weight: if bold {
@@ -206,6 +213,8 @@ impl Canvas<'_> {
         self.b.text(LogicalPoint::new(x, y), layout, color);
     }
     fn centered_text(&mut self, cx: f64, cy: f64, value: &str, size: f64, color: Color) {
+        let translated = i18n::tr(self.language, value);
+        let value = translated.as_ref();
         let style = TextStyle {
             family: FontFamily::Named("Segoe UI".into()),
             weight: FontWeight::Regular,
@@ -226,15 +235,21 @@ impl Canvas<'_> {
     fn button(&mut self, x: f64, y: f64, w: f64, label: &str, action: Action, primary: bool) {
         let r = LogicalRect::from_xywh(x, y, w, 38.0);
         let enabled = match action {
-            Action::Nav(_) => true,
+            Action::Nav(_)
+            | Action::Language
+            | Action::SelectLanguage(_)
+            | Action::HelpSection(_) => true,
             Action::OpenAboutSite => true,
             Action::RankServers => true,
             Action::Compact | Action::Expanded | Action::ToggleAutostart => true,
             Action::Connect | Action::Close | Action::Paste | Action::Submit => !self.busy,
             Action::SelectRuleTarget(_) | Action::TargetPage(_) => !self.busy,
+            Action::RefreshSubscription(_) => !self.busy,
             Action::AddRule
             | Action::AddRuDomains
             | Action::AddProcessRule
+            | Action::AddAntigravity
+            | Action::CheckAntigravity
             | Action::DeleteRule(_)
             | Action::EditRule(_)
             | Action::RuleNote
@@ -336,12 +351,56 @@ fn bytes(value: f64) -> String {
 
 impl App {
     pub(super) fn paint(&mut self, w: f64, h: f64) -> PaintList {
+        let language = self.language();
+        let count = match self.page {
+            Page::Servers | Page::Dashboard => self.settings.nodes.len(),
+            Page::Routing => self.settings.rules.len(),
+            Page::Subscriptions => self.settings.subscriptions.len(),
+            Page::Help => help::COUNT,
+            _ => 0,
+        };
+        let (top, height, visible) = match self.page {
+            Page::Servers => (
+                265.0,
+                (h - 368.0).max(40.0),
+                ((h - 357.0) / 59.0).floor().max(1.0) as usize,
+            ),
+            Page::Routing => (
+                354.0,
+                (h - 460.0).max(40.0),
+                ((h - 458.0) / 58.0).floor().max(1.0) as usize,
+            ),
+            Page::Subscriptions => (
+                323.0,
+                (h - 426.0).max(40.0),
+                ((h - 424.0) / 116.0).floor().max(1.0) as usize,
+            ),
+            Page::Dashboard => (
+                548.0,
+                (h - 652.0).max(35.0),
+                (((h - 595.0).max(100.0) - 47.0) / 59.0).floor().max(1.0) as usize,
+            ),
+            Page::Help => (154.0, (h - 330.0).max(40.0), 1),
+            _ => (0.0, 0.0, 1),
+        };
+        self.offset = self.offset.min(count.saturating_sub(visible));
+        self.scroll_bar = if !self.compact && self.modal.is_none() {
+            scrolling::ScrollBar::new(
+                LogicalRect::from_xywh(w - 48.0, top, 7.0, height),
+                count,
+                visible,
+                self.offset,
+            )
+        } else {
+            None
+        };
         let rule_targets = if self.modal.is_some_and(|modal| modal != Modal::Import) {
             self.rule_targets()
         } else {
             Vec::new()
         };
         let mut c = Canvas {
+            language,
             tooltip: None,
             b: PaintBuilder::with_viewport(LogicalRect::from_xywh(0.0, 0.0, w, h)),
             text: &mut self.text,
@@ -482,7 +541,7 @@ impl App {
             c.text(
                 24.0,
                 h - 116.0,
-                &shortened(&self.notice, 42),
+                &shortened(i18n::tr(language, &self.notice).as_ref(), 42),
                 11.0,
                 MUTED,
                 false,
@@ -518,6 +577,7 @@ impl App {
             (Page::Statistics, "⌁", "Статистика"),
             (Page::Settings, "⚙", "Настройки"),
             (Page::About, "ⓘ", "О нас"),
+            (Page::Help, "", "Инструкция"),
         ]
         .iter()
         .enumerate()
@@ -543,6 +603,7 @@ impl App {
                     Page::Statistics => 19,
                     Page::Settings => 15,
                     Page::About => 13,
+                    Page::Help => 20,
                 }),
                 LogicalRect::from_xywh(28.0, y + 11.0, 19.0, 19.0),
                 if active { ACCENT } else { MUTED },
@@ -588,15 +649,10 @@ impl App {
                 "О нас",
                 "Everty MultiLink · один клиент для ваших подключений.",
             ),
+            Page::Help => ("Инструкция", "Пошаговые ответы: что включить и зачем."),
         };
         c.text(x, 28.0, title, 27.0, TEXT, true);
-        c.icon_button(
-            w - 220.0,
-            32.0,
-            11,
-            Action::Compact,
-            "Открыть компактное окно",
-        );
+        c.button(w - 335.0, 32.0, 148.0, "Компактно", Action::Compact, false);
         c.text(x, 69.0, sub, 13.0, MUTED, false);
         c.badge(
             w - 167.0,
@@ -610,6 +666,54 @@ impl App {
         );
         c.line(x, 105.0, width);
         match self.page {
+            Page::Help => {
+                let (title, body) = help::section(language, self.offset);
+                c.card(x, 131.0, width, h - 225.0);
+                c.text(x + 24.0, 155.0, title, 20.0, TEXT, true);
+                let style = TextStyle {
+                    family: FontFamily::Named("Segoe UI".into()),
+                    font_size: LogicalPx(14.0),
+                    line_height: LogicalPx(22.0),
+                    ..TextStyle::default()
+                };
+                let layout = Arc::new(c.text.shape(body, &style, Some(LogicalPx(width - 80.0))));
+                c.b.push_clip(LogicalRect::from_xywh(
+                    x + 24.0,
+                    201.0,
+                    width - 80.0,
+                    h - 390.0,
+                ));
+                c.b.text(LogicalPoint::new(x + 24.0, 201.0), layout, MUTED);
+                let _ = c.b.pop_clip();
+                c.text(
+                    x + 24.0,
+                    h - 135.0,
+                    &format!("Раздел {} / {}", self.offset + 1, help::COUNT),
+                    12.0,
+                    MUTED,
+                    false,
+                );
+                if self.offset > 0 {
+                    c.button(
+                        w - 328.0,
+                        h - 149.0,
+                        130.0,
+                        "Назад",
+                        Action::HelpSection(self.offset - 1),
+                        false,
+                    );
+                }
+                if self.offset + 1 < help::COUNT {
+                    c.button(
+                        w - 186.0,
+                        h - 149.0,
+                        130.0,
+                        "Далее",
+                        Action::HelpSection(self.offset + 1),
+                        true,
+                    );
+                }
+            }
             Page::Access => {
                 c.card(x, 131.0, width, 228.0);
                 c.b.icon(
@@ -652,7 +756,7 @@ impl App {
                     let date = chrono::DateTime::from_timestamp(a.expires_at as i64, 0)
                         .map(|d| {
                             d.with_timezone(&chrono::FixedOffset::east_opt(10800).unwrap())
-                                .format("%d.%m.%Y · %H:%M МСК")
+                                .format("%d.%m.%Y · %H:%M UTC+3")
                                 .to_string()
                         })
                         .unwrap_or_else(|| "—".into());
@@ -977,7 +1081,11 @@ impl App {
                 c.text(
                     x + 22.0,
                     218.0,
-                    "Изменение и обновление доступны после отключения VPN.",
+                    if self.subscription_changes_pending {
+                        "Новый список серверов применится при следующем подключении."
+                    } else {
+                        "Автообновление при запуске и каждые 6 часов."
+                    },
                     12.0,
                     MUTED,
                     false,
@@ -1042,13 +1150,17 @@ impl App {
                         .iter()
                         .filter(|n| n.subscription_ids.contains(&source.id))
                         .count();
-                    c.text(x + 22.0, y, &shortened(&source.name, 60), 16.0, TEXT, true);
+                    c.raw_text(x + 22.0, y, &shortened(&source.name, 60), 16.0, TEXT, true);
                     let age = std::time::SystemTime::now()
                         .duration_since(std::time::UNIX_EPOCH)
                         .unwrap_or_default()
                         .as_secs()
                         .saturating_sub(source.updated_at);
-                    let refreshed = if source.updated_at == 0 {
+                    let refreshed = if self.refreshing_subscription == Some(source.id) {
+                        "обновляется…".into()
+                    } else if self.subscription_errors.contains(&source.id) {
+                        "ошибка обновления".into()
+                    } else if source.updated_at == 0 {
                         "ещё не обновлялась".into()
                     } else if age < 60 {
                         "обновлено только что".into()
@@ -1063,7 +1175,7 @@ impl App {
                         &shortened(
                             &format!(
                                 "{} · {count} серверов · {refreshed}",
-                                multilink_core::subscription_host(&source.url)
+                                multilink_core::subscription_host(&source.url),
                             ),
                             95,
                         ),
@@ -1071,8 +1183,32 @@ impl App {
                         MUTED,
                         false,
                     );
+                    if self
+                        .settings
+                        .access
+                        .as_ref()
+                        .is_some_and(|a| a.subscription_id == source.id)
+                        && self.connected
+                    {
+                        c.icon_button(
+                            x + width - 70.0,
+                            y,
+                            18,
+                            Action::Nav(Page::Access),
+                            "Открыть мой доступ",
+                        );
+                    } else if self.refreshing_subscription != Some(source.id) {
+                        c.icon_button(
+                            x + width - 70.0,
+                            y,
+                            3,
+                            Action::RefreshSubscription(source.id),
+                            "Обновить подписку",
+                        );
+                    } else {
+                        c.text(x + width - 65.0, y + 10.0, "…", 16.0, MUTED, true);
+                    }
                     for (index, (label, action)) in [
-                        ("Обновить", Action::RefreshSubscription(source.id)),
                         ("Название", Action::RenameSubscription(source.id)),
                         ("Ссылка", Action::EditSubscriptionUrl(source.id)),
                         ("Удалить", Action::DeleteSubscription(source.id)),
@@ -1093,7 +1229,7 @@ impl App {
                             c.icon_button(
                                 x + 22.0 + index as f64 * 48.0,
                                 y + 53.0,
-                                [3, 1, 4, 2][index],
+                                [1, 4, 2][index],
                                 action,
                                 label,
                             );
@@ -1212,6 +1348,14 @@ impl App {
                     Action::AddProcessRule,
                     "Добавить правило для приложения",
                 );
+                c.button(
+                    w - 496.0,
+                    264.0,
+                    144.0,
+                    "Antigravity",
+                    Action::AddAntigravity,
+                    false,
+                );
                 c.card(x, 341.0, width, h - 435.0);
                 if self.settings.rules.is_empty() {
                     c.text(x + 26.0, 370.0, "Пока без исключений", 20.0, TEXT, true);
@@ -1266,7 +1410,7 @@ impl App {
                             .rule_notes
                             .get(&multilink_core::rule_key(rule))
                         {
-                            c.text(
+                            c.raw_text(
                                 x + 20.0,
                                 y + 32.0,
                                 &shortened(&note.replace(['\n', '\r', '\t'], " "), 43),
@@ -1276,12 +1420,15 @@ impl App {
                             );
                         }
                         let _ = c.b.pop_clip();
+                        let server_name = multilink_core::server_route_name(target);
                         let label = if target == "DIRECT" {
                             "Напрямую"
                         } else if target == "MULTILINK" {
                             "Через VPN"
                         } else {
-                            target.strip_prefix("COUNTRY-").unwrap_or(target)
+                            server_name.as_deref().unwrap_or_else(|| {
+                                target.strip_prefix("COUNTRY-").unwrap_or(target)
+                            })
                         };
                         c.text(
                             w - 310.0,
@@ -1357,7 +1504,7 @@ impl App {
                     c.text(
                         x,
                         566.0 + i as f64 * 30.0,
-                        &shortened(log, 100),
+                        &shortened(i18n::tr(language, log).as_ref(), 100),
                         12.0,
                         MUTED,
                         false,
@@ -1411,11 +1558,22 @@ impl App {
                     false,
                 );
                 c.toggle(w - 112.0, 376.0, self.autostart, Action::ToggleAutostart);
-                c.card(x, 455.0, width, 91.0);
-                c.text(x + 24.0, 474.0, "Выбор сервера", 15.0, TEXT, true);
+                c.card(x, 455.0, width, 70.0);
+                c.text(x + 24.0, 476.0, "Язык интерфейса", 14.0, TEXT, true);
+                c.text(
+                    x + 275.0,
+                    476.0,
+                    i18n::label(&self.settings.language),
+                    14.0,
+                    ACCENT,
+                    true,
+                );
+                c.icon_button(w - 94.0, 471.0, 14, Action::Language, "Изменить язык");
+                c.card(x, 543.0, width, 78.0);
+                c.text(x + 24.0, 557.0, "Выбор сервера", 14.0, TEXT, true);
                 c.text(
                     x + 24.0,
-                    506.0,
+                    587.0,
                     self.settings.policy.label(),
                     14.0,
                     ACCENT,
@@ -1423,14 +1581,14 @@ impl App {
                 );
                 c.icon_button(
                     w - 94.0,
-                    480.0,
+                    562.0,
                     14,
                     Action::Policy,
                     "Сменить алгоритм выбора сервера",
                 );
                 c.text(
                     x,
-                    568.0,
+                    642.0,
                     if self.connected {
                         "Перед изменением режима отключитесь от VPN."
                     } else {
@@ -1440,21 +1598,9 @@ impl App {
                     MUTED,
                     false,
                 );
-                c.text(
-                    x,
-                    604.0,
-                    if multilink_mihomo::binary().is_file() {
-                        "Компоненты подключения готовы"
-                    } else {
-                        "Ядро не найдено: vendor/mihomo/mihomo.exe"
-                    },
-                    12.0,
-                    MUTED,
-                    false,
-                );
                 c.icon_button(
                     w - 72.0,
-                    591.0,
+                    630.0,
                     2,
                     Action::ClearServers,
                     "Очистить библиотеку серверов",
@@ -1473,11 +1619,25 @@ impl App {
         c.text(
             x + 17.0,
             h - 54.0,
-            &shortened(&self.notice, 105),
+            &shortened(i18n::tr(language, &self.notice).as_ref(), 105),
             11.0,
             MUTED,
             false,
         );
+        if let Some(bar) = self.scroll_bar {
+            c.b.fill_rect(bar.track, LINE, 4.0);
+            c.b.fill_rect(
+                bar.thumb,
+                if self.scroll_drag.is_some()
+                    || bar.track.inset(Insets::all(-5.0)).contains(self.pointer)
+                {
+                    ACCENT
+                } else {
+                    MUTED.with_opacity(0.65)
+                },
+                4.0,
+            );
+        }
         if self.modal.is_none() {
             c.paint_tooltip(w, h);
         }
@@ -1494,6 +1654,38 @@ impl App {
             };
             let my = (h - modal_height) / 2.0;
             c.card(mx, my, 660.0, modal_height);
+            if modal == Modal::Language {
+                c.text(mx + 28.0, my + 24.0, "Язык интерфейса", 23.0, TEXT, true);
+                c.text(
+                    mx + 28.0,
+                    my + 61.0,
+                    "Выберите язык. Изменение применяется сразу.",
+                    13.0,
+                    MUTED,
+                    false,
+                );
+                for (index, (key, label)) in i18n::OPTIONS.iter().enumerate() {
+                    c.button(
+                        mx + 28.0 + (index % 2) as f64 * 312.0,
+                        my + 98.0 + (index / 2) as f64 * 50.0,
+                        292.0,
+                        label,
+                        Action::SelectLanguage(index),
+                        self.settings.language == *key,
+                    );
+                }
+                c.button(
+                    mx + 483.0,
+                    my + 264.0,
+                    149.0,
+                    "Готово",
+                    Action::Close,
+                    false,
+                );
+                self.input_rect = None;
+                self.hits = c.hits;
+                return c.b.finish();
+            }
             if matches!(modal, Modal::SubscriptionDelete | Modal::ClearLibrary) {
                 c.text(
                     mx + 28.0,
@@ -1601,7 +1793,7 @@ impl App {
                 c.text(
                     mx + 28.0,
                     my + 190.0,
-                    &shortened(&self.notice, 76),
+                    &shortened(i18n::tr(language, &self.notice).as_ref(), 76),
                     11.0,
                     MUTED,
                     false,
@@ -1634,6 +1826,12 @@ impl App {
             let import = modal == Modal::Import || note || subscription;
             let ru = modal == Modal::RuRule;
             let process = modal == Modal::ProcessRule;
+            let antigravity = process
+                && self
+                    .edit
+                    .text()
+                    .trim()
+                    .eq_ignore_ascii_case("Antigravity.exe");
             c.text(
                 mx + 28.0,
                 my + 23.0,
@@ -1647,10 +1845,14 @@ impl App {
                     "Изменить ссылку подписки"
                 } else if import {
                     "Добавить подписку или серверы"
+                } else if antigravity {
+                    "Маршрут для Antigravity"
                 } else if self.editing_rule.is_some() {
                     "Изменить правило"
                 } else if ru {
                     "Российские сайты"
+                } else if antigravity {
+                    "Выберите сервер. TUN охватывает трафик приложения по имени .exe."
                 } else if process {
                     "Маршрут для приложения"
                 } else {
@@ -1778,11 +1980,50 @@ impl App {
                     Action::RuleNote,
                     false,
                 );
+                if antigravity {
+                    if self.antigravity_checking {
+                        c.text(
+                            mx + 424.0,
+                            my + 226.0,
+                            "Проверка региона…",
+                            13.0,
+                            MUTED,
+                            false,
+                        );
+                    } else {
+                        c.button(
+                            mx + 410.0,
+                            my + 216.0,
+                            222.0,
+                            "Проверить регион",
+                            Action::CheckAntigravity,
+                            false,
+                        );
+                    }
+                }
+            }
+            if let Some((_, message)) = self.antigravity_result.as_ref().filter(|(id, _)| {
+                antigravity
+                    && rule_targets
+                        .get(self.rule_target)
+                        .is_some_and(|(target, _)| id == target)
+            }) {
+                c.text(
+                    mx + 28.0,
+                    my + 258.0,
+                    &shortened(i18n::tr(language, message).as_ref(), 90),
+                    12.0,
+                    ACCENT,
+                    false,
+                );
             }
             c.text(
                 mx + 28.0,
                 my + if import { 229.0 } else { 279.0 },
-                &shortened(&self.notice, 76),
+                &shortened(
+                    i18n::tr(language, &self.notice).as_ref(),
+                    if antigravity { 99 } else { 76 },
+                ),
                 11.0,
                 MUTED,
                 false,
@@ -2016,7 +2257,7 @@ fn server_list(
             (w - 380.0).max(1.0),
             55.0,
         ));
-        c.text(
+        c.raw_text(
             x + 68.0,
             ry + 4.0,
             &shortened(&node.name, 40),
@@ -2084,6 +2325,7 @@ mod tests {
         let mut text = TextSystem::new();
         let mut cache = TextCache::default();
         let mut c = Canvas {
+            language: i18n::Language::Ru,
             tooltip: None,
             b: PaintBuilder::new(),
             text: &mut text,

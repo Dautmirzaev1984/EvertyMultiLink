@@ -1,0 +1,345 @@
+Подключено	Connected	Verbunden	Conectado	已连接
+Не подключено	Disconnected	Nicht verbunden	Desconectado	未连接
+Ваши маршруты активны	Your routes are active	Ihre Routen sind aktiv	Tus rutas están activas	路由已启用
+Безопасный доступ в один клик	Connect with one click	Mit einem Klick verbinden	Conecta con un clic	一键连接
+Подождите…	Please wait…	Bitte warten…	Espera…	请稍候…
+Отключиться	Disconnect	Trennen	Desconectar	断开连接
+Подключиться	Connect	Verbinden	Conectar	连接
+Время подключения  {:02}:{:02}:{:02}	Connected for  {}:{}:{}	Verbunden seit  {}:{}:{}	Tiempo conectado  {}:{}:{}	连接时长  {}:{}:{}
+Время подключения  —	Connection time  —	Verbindungsdauer  —	Tiempo de conexión  —	连接时长  —
+Расширенные настройки  →	Advanced settings  →	Erweiterte Einstellungen  →	Opciones avanzadas  →	高级设置  →
+РАБОЧЕЕ ПРОСТРАНСТВО	WORKSPACE	ARBEITSBEREICH	ESPACIO DE TRABAJO	工作区
+Обзор	Overview	Übersicht	Resumen	概览
+Доступ	Access	Zugang	Acceso	访问权限
+Серверы	Servers	Server	Servidores	服务器
+Подписки	Subscriptions	Abonnements	Suscripciones	订阅
+Маршрутизация	Routing	Routing	Enrutamiento	路由
+Статистика	Statistics	Statistik	Estadísticas	统计
+Настройки	Settings	Einstellungen	Ajustes	设置
+О нас	About	Über uns	Acerca de	关于
+Инструкция	Guide	Anleitung	Guía	使用指南
+Обзор сети	Network overview	Netzwerkübersicht	Resumen de red	网络概览
+Все маршруты под контролем.	Your connections at a glance.	Ihre Verbindungen im Überblick.	Tus conexiones de un vistazo.	连接状态一目了然。
+Мой доступ	My access	Mein Zugang	Mi acceso	我的访问权限
+Активация и срок подписки Everty.	Activate and manage your Everty access.	Everty-Zugang aktivieren und verwalten.	Activa y gestiona tu acceso Everty.	激活并管理 Everty 访问权限。
+Управляйте узлами и доступностью маршрутов.	Choose the servers you want to use.	Wählen Sie Ihre Server aus.	Elige los servidores que quieres usar.	选择要使用的服务器。
+Одна ссылка — весь ваш серверный пул.	Manage your subscription sources.	Ihre Abonnementquellen verwalten.	Gestiona tus fuentes de suscripción.	管理订阅来源。
+Удобные исключения для доменов, IP и подсетей.	Choose how sites and applications connect.	Verbindungen für Websites und Apps festlegen.	Elige cómo se conectan sitios y aplicaciones.	选择网站和应用的连接方式。
+Скорость, расход трафика и события подключения.	Speed, traffic usage and connection events.	Geschwindigkeit, Datenverbrauch und Ereignisse.	Velocidad, tráfico y eventos de conexión.	速度、流量和连接事件。
+Параметры подключения и состояние приложения.	Connection and application preferences.	Verbindungs- und Programmeinstellungen.	Preferencias de conexión y de la aplicación.	连接和应用偏好设置。
+Everty MultiLink · один клиент для ваших подключений.	Everty MultiLink · one client for your connections.	Everty MultiLink · ein Client für Ihre Verbindungen.	Everty MultiLink · un cliente para tus conexiones.	Everty MultiLink · 统一管理您的连接。
+Открыть компактное окно	Open compact window	Kompaktes Fenster öffnen	Abrir ventana compacta	打开精简窗口
+Компактно	Compact	Kompakt	Compacto	精简模式
+● Подключено	● Connected	● Verbunden	● Conectado	● 已连接
+○ Отключено	○ Disconnected	○ Getrennt	○ Desconectado	○ 未连接
+Подписка активна	Subscription active	Abonnement aktiv	Suscripción activa	订阅有效
+Доступ приостановлен	Access paused	Zugang pausiert	Acceso suspendido	访问已暂停
+Ваш личный доступ	Your personal access	Ihr persönlicher Zugang	Tu acceso personal	您的个人访问权限
+Введите ключ из 6 символов, полученный от администратора.	Enter the 6-character key from your administrator.	Geben Sie den 6-stelligen Schlüssel Ihres Administrators ein.	Introduce la clave de 6 caracteres del administrador.	输入管理员提供的 6 位激活码。
+Доступ до {date}	Access until {}	Zugang bis {}	Acceso hasta {}	有效期至 {}
+Срок подписки начнётся с момента активации.	Your subscription starts when you activate it.	Das Abonnement beginnt mit der Aktivierung.	La suscripción empieza al activarla.	订阅有效期从激活时开始计算。
+Активировать новый ключ	Activate a new key	Neuen Schlüssel aktivieren	Activar otra clave	激活新密钥
+Ввести ключ	Enter key	Schlüssel eingeben	Introducir clave	输入激活码
+Обновить доступ и серверы	Refresh access and servers	Zugang und Server aktualisieren	Actualizar acceso y servidores	刷新权限和服务器
+Ключ активируется один раз. Повторно вводить его при запуске не нужно.	Activate once. No need to enter the key on every launch.	Einmal aktivieren. Keine erneute Eingabe bei jedem Start.	Se activa una vez. No hay que introducirla al iniciar.	只需激活一次，无需每次启动时输入。
+Есть своя ссылка или сервер? Добавьте их во вкладке «Подписки».	Have your own link or server? Add it under Subscriptions.	Eigener Link oder Server? Unter Abonnements hinzufügen.	¿Tienes un enlace o servidor? Añádelo en Suscripciones.	已有订阅链接或服务器？请在“订阅”中添加。
+Активация не завершена. Откройте ввод ключа и повторите запрос.	Activation is incomplete. Open the key dialog and try again.	Aktivierung unvollständig. Schlüssel öffnen und erneut versuchen.	Activación incompleta. Abre el diálogo y vuelve a intentarlo.	激活尚未完成，请打开激活码窗口重试。
+Маршруты активны	Routes active	Routen aktiv	Rutas activas	路由已启用
+Готов к подключению	Ready to connect	Verbindungsbereit	Listo para conectar	准备连接
+Трафик распределяется между доступными узлами	Traffic uses your available servers	Verkehr nutzt Ihre verfügbaren Server	El tráfico usa los servidores disponibles	流量通过可用服务器传输
+Нажмите «Подключиться», чтобы включить VPN	Select Connect to start your VPN	Mit Verbinden das VPN starten	Pulsa Conectar para iniciar la VPN	点击“连接”以启动 VPN
+Добавьте серверы и запустите защищённый маршрут	Add servers to get connected	Server hinzufügen und verbinden	Añade servidores para conectar	添加服务器后即可连接
+Подключиться →	Connect →	Verbinden →	Conectar →	连接 →
+СИСТЕМНЫЙ ПРОКСИ	SYSTEM PROXY	SYSTEMPROXY	PROXY DEL SISTEMA	系统代理
+ЛОКАЛЬНЫЙ ПРОКСИ	LOCAL PROXY	LOKALER PROXY	PROXY LOCAL	本地代理
+Подключение активно	Connection active	Verbindung aktiv	Conexión activa	连接已启用
+Ожидание подключения	Waiting for connection	Warten auf Verbindung	Esperando conexión	等待连接
+СЕРВЕРЫ В ПУЛЕ	SERVERS	SERVER	SERVIDORES	服务器
+включено / импортировано	enabled / imported	aktiv / importiert	activos / importados	已启用 / 已导入
+↓  ЗАГРУЗКА	↓  DOWNLOAD	↓  DOWNLOAD	↓  DESCARGA	↓  下载
+текущая скорость	current speed	aktuelle Geschwindigkeit	velocidad actual	当前速度
+↑  ОТДАЧА	↑  UPLOAD	↑  UPLOAD	↑  SUBIDA	↑  上传
+Пул серверов	Servers	Server	Servidores	服务器
+{} узлов	{} nodes	{} Knoten	{} nodos	{} 个节点
+Все серверы →	All servers →	Alle Server →	Todos los servidores →	全部服务器 →
+{} серверов · {} включено	{} servers · {} enabled	{} Server · {} aktiv	{} servidores · {} activos	{} 个服务器 · 已启用 {}
++ Добавить серверы	+ Add servers	+ Server hinzufügen	+ Añadir servidores	+ 添加服务器
+Включить все серверы	Enable all servers	Alle Server aktivieren	Activar todos los servidores	启用全部服务器
+Выключить все серверы	Disable all servers	Alle Server deaktivieren	Desactivar todos los servidores	禁用全部服务器
+Сортировка по оценке включена	Sorted by score	Nach Bewertung sortiert	Ordenados por puntuación	已按评分排序
+Сортировать по оценке	Sort by score	Nach Bewertung sortieren	Ordenar por puntuación	按评分排序
+Чтобы изменить серверы, сначала отключитесь.	Disconnect before changing servers.	Vor Serveränderungen die Verbindung trennen.	Desconecta antes de cambiar servidores.	修改服务器前请先断开连接。
+Нажмите на сервер, чтобы включить или выключить его.	Select a server to enable or disable it.	Server anklicken, um ihn zu aktivieren oder zu deaktivieren.	Pulsa un servidor para activarlo o desactivarlo.	点击服务器以启用或禁用。
+Источники серверов	Server sources	Serverquellen	Fuentes de servidores	服务器来源
+Ваши ссылки подписок и отдельные серверы.	Your subscription links and individual servers.	Ihre Abonnementlinks und einzelnen Server.	Tus enlaces de suscripción y servidores individuales.	您的订阅链接和独立服务器。
+Изменение и обновление доступны после отключения VPN.	Disconnect the VPN before editing or refreshing.	Vor Bearbeitung oder Aktualisierung das VPN trennen.	Desconecta la VPN antes de editar o actualizar.	编辑或更新前请先断开 VPN。
++ Добавить подписку	+ Add subscription	+ Abonnement hinzufügen	+ Añadir suscripción	+ 添加订阅
+Подписок: {} · Серверов вручную: {manual}	Subscriptions: {} · Manual servers: {}	Abonnements: {} · Manuelle Server: {}	Suscripciones: {} · Servidores manuales: {}	订阅：{} · 手动服务器：{}
+Добавьте HTTPS-ссылку подписки	Add an HTTPS subscription link	HTTPS-Abonnementlink hinzufügen	Añade un enlace HTTPS de suscripción	添加 HTTPS 订阅链接
+У старых импортов ссылка не сохранялась. Добавьте её заново для обновления.	Older imports did not save the link. Add it again to enable updates.	Ältere Importe speicherten keinen Link. Für Updates erneut hinzufügen.	Las importaciones antiguas no guardaban el enlace. Añádelo otra vez.	旧版导入未保存链接，请重新添加以启用更新。
+Существующие серверы останутся в библиотеке.	Existing servers will stay in the library.	Vorhandene Server bleiben in der Bibliothek.	Los servidores existentes se conservarán.	现有服务器将保留在列表中。
+ещё не обновлялась	not refreshed yet	noch nicht aktualisiert	sin actualizar	尚未更新
+обновлено только что	just refreshed	gerade aktualisiert	actualizado ahora	刚刚更新
+обновлено {} мин. назад	updated {} min ago	vor {} Min. aktualisiert	actualizado hace {} min	{} 分钟前更新
+обновлено {} ч. назад	updated {} h ago	vor {} Std. aktualisiert	actualizado hace {} h	{} 小时前更新
+{} · {count} серверов · {refreshed}	{} · {} servers · {}	{} · {} Server · {}	{} · {} servidores · {}	{} · {} 个服务器 · {}
+Обновить	Refresh	Aktualisieren	Actualizar	刷新
+Название	Name	Name	Nombre	名称
+Ссылка	Link	Link	Enlace	链接
+Удалить	Delete	Löschen	Eliminar	删除
+Открыть мой доступ	Open my access	Meinen Zugang öffnen	Abrir mi acceso	打开我的访问权限
+Версия {version}	Version {}	Version {}	Versión {}	版本 {}
+АВТОР	AUTHOR	AUTOR	AUTOR	作者
+Проект, открытые разработки и новости Everty	Everty projects, open source and news	Everty-Projekte, Open Source und Neuigkeiten	Proyectos, código abierto y novedades de Everty	Everty 项目、开源开发与动态
+Rust + EvertyUI · сетевое ядро Mihomo	Rust + EvertyUI · Mihomo networking core	Rust + EvertyUI · Mihomo-Netzwerkkern	Rust + EvertyUI · núcleo de red Mihomo	Rust + EvertyUI · Mihomo 网络核心
+ПОЛИТИКА МАРШРУТИЗАЦИИ	SERVER SELECTION	SERVERAUSWAHL	SELECCIÓN DE SERVIDOR	服务器选择
+Сменить алгоритм выбора сервера	Change server selection	Serverauswahl ändern	Cambiar selección de servidor	更改服务器选择策略
+Импортировать правила из файла	Import rules from file	Regeln aus Datei importieren	Importar reglas de un archivo	从文件导入规则
+Экспортировать правила в файл	Export rules to file	Regeln in Datei exportieren	Exportar reglas a un archivo	导出规则到文件
+Правила	Rules	Regeln	Reglas	规则
+Домены, IP и группы сайтов. Применяются сразу.	Domains, IPs and site groups. Changes apply immediately.	Domains, IPs und Websitegruppen. Änderungen gelten sofort.	Dominios, IP y grupos de sitios. Se aplican al instante.	域名、IP 和网站组，修改立即生效。
++ Правило	+ Rule	+ Regel	+ Regla	+ 添加规则
+RU сайты	RU sites	RU-Websites	Sitios RU	俄罗斯网站
+Добавить правило для приложения	Add an application rule	App-Regel hinzufügen	Añadir regla de aplicación	添加应用规则
+Пока без исключений	No exceptions yet	Noch keine Ausnahmen	Aún no hay excepciones	尚无例外规则
+Добавьте example.com, 192.168.1.1 или 10.0.0.0/8.	Add example.com, 192.168.1.1 or 10.0.0.0/8.	Zum Beispiel example.com, 192.168.1.1 oder 10.0.0.0/8.	Añade example.com, 192.168.1.1 o 10.0.0.0/8.	例如 example.com、192.168.1.1 或 10.0.0.0/8。
+Добавлять и удалять исключения можно без отключения VPN.	You can edit rules without disconnecting the VPN.	Regeln lassen sich bei aktiver VPN-Verbindung bearbeiten.	Puedes editar reglas sin desconectar la VPN.	无需断开 VPN 即可编辑规则。
+Российские сайты	Russian sites	Russische Websites	Sitios rusos	俄罗斯网站
+Напрямую	Direct	Direkt	Directo	直连
+Через VPN	Via VPN	Über VPN	Por VPN	通过 VPN
+Изменить правило	Edit rule	Regel bearbeiten	Editar regla	编辑规则
+Удалить правило	Delete rule	Regel löschen	Eliminar regla	删除规则
+Трафик с начала подключения	Traffic since connection started	Daten seit Verbindungsbeginn	Tráfico desde el inicio	本次连接流量
+↓ Загрузка	↓ Download	↓ Download	↓ Descarga	↓ 下载
+↑ Отдача	↑ Upload	↑ Upload	↑ Subida	↑ 上传
+ПОЛУЧЕНО	RECEIVED	EMPFANGEN	RECIBIDO	已接收
+ОТПРАВЛЕНО	SENT	GESENDET	ENVIADO	已发送
+СОЕДИНЕНИЯ	CONNECTIONS	VERBINDUNGEN	CONEXIONES	连接数
+Журнал событий	Event log	Ereignisprotokoll	Registro de eventos	事件日志
+Подключение	Connection	Verbindung	Conexión	连接
+Системный прокси	System proxy	Systemproxy	Proxy del sistema	系统代理
+Для браузеров и приложений с поддержкой прокси.	For browsers and proxy-aware applications.	Für Browser und Apps mit Proxy-Unterstützung.	Para navegadores y aplicaciones compatibles con proxy.	适用于浏览器和支持代理的应用。
+TUN — весь трафик	TUN — all traffic	TUN — gesamter Verkehr	TUN — todo el tráfico	TUN — 全部流量
+Потребуются права администратора Windows.	Windows administrator permission is required.	Windows-Administratorrechte erforderlich.	Requiere permisos de administrador de Windows.	需要 Windows 管理员权限。
+Запускать вместе с Windows	Start with Windows	Mit Windows starten	Iniciar con Windows	随 Windows 启动
+Приложение запустится в трее.	The app will start in the system tray.	Die App startet im Infobereich.	La aplicación se iniciará en la bandeja.	应用将启动到系统托盘。
+Выбор сервера	Server selection	Serverauswahl	Selección de servidor	服务器选择
+Перед изменением режима отключитесь от VPN.	Disconnect the VPN before changing mode.	Vor einem Moduswechsel das VPN trennen.	Desconecta la VPN antes de cambiar el modo.	切换模式前请先断开 VPN。
+Режимы TUN и прокси можно включать вместе.	TUN and system proxy can be enabled together.	TUN und Systemproxy können gleichzeitig aktiv sein.	Puedes activar TUN y el proxy juntos.	TUN 和系统代理可以同时启用。
+Компоненты подключения готовы	Connection components are ready	Verbindungskomponenten bereit	Componentes de conexión listos	连接组件已就绪
+Ядро не найдено: vendor/mihomo/mihomo.exe	Core not found: vendor/mihomo/mihomo.exe	Kern fehlt: vendor/mihomo/mihomo.exe	Núcleo no encontrado: vendor/mihomo/mihomo.exe	未找到核心：vendor/mihomo/mihomo.exe
+Очистить библиотеку серверов	Clear server library	Serverbibliothek leeren	Vaciar biblioteca de servidores	清空服务器列表
+Очистить библиотеку?	Clear the library?	Bibliothek leeren?	¿Vaciar la biblioteca?	清空列表？
+Удалить подписку?	Delete subscription?	Abonnement löschen?	¿Eliminar la suscripción?	删除订阅？
+Будут удалены все локальные серверы, подписки и сохранённый доступ.	All local servers, subscriptions and saved access will be removed.	Alle lokalen Server, Abonnements und Zugänge werden entfernt.	Se eliminarán servidores, suscripciones y acceso guardado.	将删除本地服务器、订阅及已保存的访问权限。
+Будут удалены только серверы, принадлежащие одной этой подписке.	Only servers belonging exclusively to this subscription will be removed.	Nur Server ausschließlich dieses Abonnements werden entfernt.	Solo se eliminarán servidores exclusivos de esta suscripción.	仅删除此订阅独有的服务器。
+Восстановить доступ можно обновлением ссылки или новым ключом.	Restore access with a subscription link or a new key.	Zugang über einen Link oder neuen Schlüssel wiederherstellen.	Restaura el acceso con un enlace o una clave nueva.	可通过订阅链接或新激活码恢复访问。
+Общие и вручную добавленные серверы останутся.	Shared and manually added servers will remain.	Gemeinsame und manuelle Server bleiben erhalten.	Se conservarán servidores compartidos y manuales.	共享及手动添加的服务器将保留。
+Привязки маршрутов сохранятся с временным переходом на VPN-пул.	Rule bindings remain, temporarily using the VPN pool.	Regelzuweisungen bleiben, vorübergehend mit dem VPN-Pool.	Las reglas se conservan usando temporalmente el grupo VPN.	保留路由绑定，暂时改用 VPN 服务器组。
+Отмена	Cancel	Abbrechen	Cancelar	取消
+Импорт маршрутов	Import routes	Routen importieren	Importar rutas	导入路由
+В файле: {count} правил. Будут импортированы заметки и политика.	File: {} rules. Notes and selection policy will also be imported.	Datei: {} Regeln. Notizen und Auswahlstrategie werden importiert.	Archivo: {} reglas. Se importarán notas y estrategia.	文件包含 {} 条规则，同时导入备注和策略。
+Добавить: совпадающие правила будут обновлены.	Add: matching rules will be updated.	Hinzufügen: vorhandene Regeln werden aktualisiert.	Añadir: se actualizarán las reglas coincidentes.	添加：更新匹配的规则。
+Заменить всё: текущий список маршрутов будет заменён.	Replace all: the current route list will be replaced.	Alles ersetzen: die aktuelle Routenliste wird ersetzt.	Reemplazar todo: se sustituirá la lista actual.	全部替换：替换当前路由列表。
+Заменить всё	Replace all	Alles ersetzen	Reemplazar todo	全部替换
+Добавить	Add	Hinzufügen	Añadir	添加
+Заметка к правилу	Rule note	Regelnotiz	Nota de la regla	规则备注
+Активация доступа	Activate access	Zugang aktivieren	Activar acceso	激活访问权限
+Название подписки	Subscription name	Abonnementname	Nombre de suscripción	订阅名称
+Изменить ссылку подписки	Edit subscription link	Abonnementlink bearbeiten	Editar enlace de suscripción	编辑订阅链接
+Добавить подписку или серверы	Add subscription or servers	Abonnement oder Server hinzufügen	Añadir suscripción o servidores	添加订阅或服务器
+Маршрут для приложения	Application route	App-Route	Ruta de aplicación	应用路由
+Новое правило	New rule	Neue Regel	Nueva regla	新建规则
+Короткая заметка: назначение правила, приложение или пояснение.	A short note about the rule or application.	Kurze Notiz zur Regel oder Anwendung.	Una nota breve sobre la regla o aplicación.	简要说明规则用途或应用。
+Ключ из 6 символов. Например: AB7K9X. Регистр букв не важен.	6-character key, for example AB7K9X. Case does not matter.	6-stelliger Schlüssel, etwa AB7K9X. Groß-/Kleinschreibung egal.	Clave de 6 caracteres, por ejemplo AB7K9X. Sin distinguir mayúsculas.	6 位激活码，例如 AB7K9X，不区分大小写。
+Удобное название для списка. До 80 символов.	A friendly name, up to 80 characters.	Ein verständlicher Name, bis zu 80 Zeichen.	Un nombre fácil de reconocer, hasta 80 caracteres.	便于识别的名称，最多 80 个字符。
+Новая ссылка применится после успешной загрузки и проверки серверов.	The new link is saved after servers are downloaded and validated.	Der neue Link gilt nach erfolgreichem Download und Prüfung.	El enlace se guardará tras descargar y comprobar los servidores.	下载并验证服务器成功后才会保存新链接。
+Вставьте HTTPS-ссылку, Everty JSON, VLESS URI, Base64 или YAML.	Paste an HTTPS link, Everty JSON, VLESS URI, Base64 or YAML.	HTTPS-Link, Everty JSON, VLESS-URI, Base64 oder YAML einfügen.	Pega un enlace HTTPS, Everty JSON, VLESS URI, Base64 o YAML.	粘贴 HTTPS 链接、Everty JSON、VLESS URI、Base64 或 YAML。
+Маршрут для локального набора российских сайтов.	Route for the bundled Russian site list.	Route für die mitgelieferte russische Websiteliste.	Ruta para la lista incluida de sitios rusos.	内置俄罗斯网站列表的路由。
+Зоны .ru, .рф и локальный набор российских сервисов.	.ru, .рф and the bundled Russian services list.	.ru, .рф und die russische Diensteliste.	.ru, .рф y la lista incluida de servicios rusos.	.ru、.рф 域名及内置俄罗斯服务列表。
+Имена .exe через запятую: app.exe, helper.exe	Separate .exe names with commas: app.exe, helper.exe	.exe-Namen mit Kommas trennen: app.exe, helper.exe	Separa los .exe con comas: app.exe, helper.exe	用逗号分隔 .exe 名称：app.exe, helper.exe
+Домены, ссылки или IP через запятую или точку с запятой.	Separate domains, URLs or IPs with commas or semicolons.	Domains, URLs oder IPs mit Komma oder Semikolon trennen.	Separa dominios, enlaces o IP con comas o punto y coma.	用逗号或分号分隔域名、链接或 IP。
+Российские сайты и домены	Russian sites and domains	Russische Websites und Domains	Sitios y dominios rusos	俄罗斯网站和域名
+Например: основной и вспомогательный процессы приложения	For example: the main app and its helper processes	Zum Beispiel: Hauptprogramm und Hilfsprozesse	Por ejemplo: proceso principal y auxiliares	例如：应用主进程和辅助进程
+Например: Основная подписка	For example: Main subscription	Zum Beispiel: Hauptabonnement	Por ejemplo: Suscripción principal	例如：主要订阅
+example.com или 192.168.0.0/16	example.com or 192.168.0.0/16	example.com oder 192.168.0.0/16	example.com o 192.168.0.0/16	example.com 或 192.168.0.0/16
+Вставить	Paste	Einfügen	Pegar	粘贴
+Маршрут: {} →	Route: {} →	Route: {} →	Ruta: {} →	路由：{} →
+Локальный набор MetaCubeX	Bundled MetaCubeX list	Mitgelieferte MetaCubeX-Liste	Lista incluida de MetaCubeX	内置 MetaCubeX 列表
+Заметка…	Note…	Notiz…	Nota…	备注…
+Проверка…	Checking…	Prüfung…	Comprobando…	正在检查…
+Готово	Done	Fertig	Listo	完成
+Активировать	Activate	Aktivieren	Activar	激活
+Сохранить	Save	Speichern	Guardar	保存
+Импортировать	Import	Importieren	Importar	导入
+Выберите маршрут	Choose a route	Route auswählen	Elige una ruta	选择路由
+Страны определяются по названиям включённых серверов.	Countries are detected from enabled server names.	Länder werden aus aktiven Servernamen erkannt.	Los países se detectan por los nombres de servidores activos.	根据已启用服务器的名称识别国家。
+Регион {region}	Region {}	Region {}	Región {}	地区 {}
+Назад	Back	Zurück	Atrás	返回
+Далее	Next	Weiter	Siguiente	下一页
+Распределяет подключения между доступными серверами.	Distributes connections across available servers.	Verteilt Verbindungen auf verfügbare Server.	Distribuye conexiones entre servidores disponibles.	在可用服务器之间分配连接。
+Выбирает сервер с наименьшей задержкой.	Chooses the server with the lowest latency.	Wählt den Server mit der niedrigsten Latenz.	Elige el servidor con menor latencia.	选择延迟最低的服务器。
+Использует первый доступный сервер и резерв при сбое.	Uses the first available server, with failover.	Nutzt den ersten verfügbaren Server mit Ausfallsicherung.	Usa el primer servidor disponible y un respaldo si falla.	使用首个可用服务器，故障时切换备用。
+Сравнивает доступность и скорость, отдельно для правил сайтов.	Compares availability and speed, including individual site rules.	Vergleicht Erreichbarkeit und Tempo, auch für einzelne Websites.	Compara disponibilidad y velocidad, también por reglas de sitios.	比较可用性和速度，并单独检查网站规则。
+Начните с вашей подписки	Start with a subscription	Mit einem Abonnement beginnen	Empieza con una suscripción	从添加订阅开始
+Добавьте VLESS-серверы — остальное возьмёт на себя ядро.	Add your VLESS servers to get started.	Fügen Sie Ihre VLESS-Server hinzu.	Añade tus servidores VLESS para empezar.	添加 VLESS 服务器即可开始。
+СЕРВЕР	SERVER	SERVER	SERVIDOR	服务器
+ЗАДЕРЖКА	LATENCY	LATENZ	LATENCIA	延迟
+СОСТОЯНИЕ	STATUS	STATUS	ESTADO	状态
+{} / 100 · {} проверок	{} / 100 · {} checks	{} / 100 · {} Prüfungen	{} / 100 · {} pruebas	{} / 100 · {} 次检查
+Пошаговые ответы: что включить и зачем.	Step-by-step instructions and practical tips.	Schritt-für-Schritt-Anleitung und praktische Tipps.	Instrucciones paso a paso y consejos prácticos.	分步说明与实用提示。
+Оценка появится после проверок подключения	Score appears after connection checks	Bewertung nach Verbindungsprüfungen	Puntuación tras comprobar la conexión	连接检查后显示评分
+Исключён	Disabled	Deaktiviert	Desactivado	已禁用
+● Доступен	● Available	● Verfügbar	● Disponible	● 可用
+○ Ожидание	○ Waiting	○ Warten	○ En espera	○ 等待中
+Сбалансированный	Balanced	Ausgewogen	Equilibrado	均衡
+Быстрый	Fastest	Schnellster	Más rápido	最快
+Резервный	Failover	Ausfallsicherung	Respaldo	故障切换
+Умный выбор	Smart selection	Intelligente Auswahl	Selección inteligente	智能选择
+Язык интерфейса	Interface language	Oberflächensprache	Idioma de la interfaz	界面语言
+Системный язык	System language	Systemsprache	Idioma del sistema	跟随系统
+Изменить язык	Change language	Sprache ändern	Cambiar idioma	更改语言
+Выберите язык. Изменение применяется сразу.	Choose a language. Changes apply immediately.	Sprache auswählen. Änderungen gelten sofort.	Elige un idioma. Se aplica al instante.	选择语言，立即生效。
+Раздел {} / {}	Section {} / {}	Abschnitt {} / {}	Sección {} / {}	第 {} / {} 节
+Прокрутите список или перетащите ползунок.	Scroll or drag the scrollbar.	Scrollen oder den Regler ziehen.	Desplázate o arrastra la barra.	滚动列表或拖动滚动条。
+Открыть MultiLink	Open MultiLink	MultiLink öffnen	Abrir MultiLink	打开 MultiLink
+Расширенное окно	Full window	Vollständiges Fenster	Ventana completa	完整窗口
+Компактное окно	Compact window	Kompaktes Fenster	Ventana compacta	精简窗口
+Правило из буфера…	Rule from clipboard…	Regel aus Zwischenablage…	Regla del portapapeles…	从剪贴板添加规则…
+Выход	Quit	Beenden	Salir	退出
+Готово к подключению	Ready to connect	Verbindungsbereit	Listo para conectar	准备连接
+Введите ключ или добавьте свою подписку	Enter a key or add your subscription	Schlüssel eingeben oder Abonnement hinzufügen	Introduce una clave o añade tu suscripción	输入激活码或添加订阅
+Доступ активен. Можно подключаться	Access is active. You can connect now	Zugang aktiv. Verbindung ist möglich	Acceso activo. Ya puedes conectar	访问权限有效，可以连接
+Обновление доступа…	Refreshing access…	Zugang wird aktualisiert…	Actualizando acceso…	正在刷新访问权限…
+Активация ключа…	Activating key…	Schlüssel wird aktiviert…	Activando clave…	正在激活…
+Обновление подписки…	Refreshing subscription…	Abonnement wird aktualisiert…	Actualizando suscripción…	正在更新订阅…
+Загрузка и проверка подписки…	Loading and checking subscription…	Abonnement wird geladen und geprüft…	Cargando y comprobando suscripción…	正在加载并检查订阅…
+Запуск и проверка ядра…	Starting connection…	Verbindung wird gestartet…	Iniciando conexión…	正在启动连接…
+Отключитесь перед изменением конфигурации	Disconnect before changing the configuration	Vor Konfigurationsänderungen trennen	Desconecta antes de cambiar la configuración	修改配置前请先断开连接
+Отключитесь перед изменением подписки	Disconnect before changing subscriptions	Vor Abonnementänderungen trennen	Desconecta antes de cambiar suscripciones	修改订阅前请先断开连接
+Не удалось сохранить настройки	Could not save settings	Einstellungen konnten nicht gespeichert werden	No se pudieron guardar los ajustes	无法保存设置
+Сервер доступа недоступен. Проверьте интернет и повторите попытку	Access server unavailable. Check your connection and retry	Zugangsserver nicht erreichbar. Verbindung prüfen und erneut versuchen	Servidor de acceso no disponible. Comprueba la conexión y reintenta	访问服务器不可用，请检查网络后重试
+Слишком много попыток. Попробуйте позже; ключ не изменён	Too many attempts. Try later; your key is unchanged	Zu viele Versuche. Später erneut versuchen; Schlüssel unverändert	Demasiados intentos. Prueba más tarde; la clave no cambió	尝试次数过多，请稍后重试，激活码未改变
+Ключ не найден, уже использован или срок активации истёк	Key not found, already used or activation expired	Schlüssel unbekannt, bereits verwendet oder abgelaufen	Clave no encontrada, ya usada o caducada	激活码不存在、已使用或已过期
+Доступ истёк или отозван. Обновите подписку у администратора	Access expired or revoked. Contact your administrator	Zugang abgelaufen oder entzogen. Administrator kontaktieren	Acceso caducado o revocado. Contacta con el administrador	访问已过期或被撤销，请联系管理员
+Автозапуск включён	Start with Windows enabled	Windows-Autostart aktiviert	Inicio con Windows activado	已启用随 Windows 启动
+Автозапуск выключен	Start with Windows disabled	Windows-Autostart deaktiviert	Inicio con Windows desactivado	已禁用随 Windows 启动
+Everty MultiLink · выполняется операция	Everty MultiLink · working	Everty MultiLink · Vorgang läuft	Everty MultiLink · procesando	Everty MultiLink · 正在处理
+Everty MultiLink · TUN подключён	Everty MultiLink · TUN connected	Everty MultiLink · TUN verbunden	Everty MultiLink · TUN conectado	Everty MultiLink · TUN 已连接
+Everty MultiLink · подключено	Everty MultiLink · connected	Everty MultiLink · verbunden	Everty MultiLink · conectado	Everty MultiLink · 已连接
+Everty MultiLink · отключено	Everty MultiLink · disconnected	Everty MultiLink · getrennt	Everty MultiLink · desconectado	Everty MultiLink · 未连接
+Не удалось проверить права Windows: {e}	Could not check Windows permissions: {}	Windows-Rechte konnten nicht geprüft werden: {}	No se pudieron comprobar permisos de Windows: {}	无法检查 Windows 权限：{}
+Для TUN полностью закройте приложение через трей и запустите его от имени администратора	For TUN, quit from the tray and run as administrator	Für TUN im Infobereich beenden und als Administrator starten	Para TUN, sal desde la bandeja y ejecuta como administrador	使用 TUN 时，请从托盘退出并以管理员身份运行
+Не удалось включить системный прокси: {e}	Could not enable system proxy: {}	Systemproxy konnte nicht aktiviert werden: {}	No se pudo activar el proxy: {}	无法启用系统代理：{}
+Не удалось восстановить системный прокси: {e}	Could not restore system proxy: {}	Systemproxy konnte nicht wiederhergestellt werden: {}	No se pudo restaurar el proxy: {}	无法恢复系统代理：{}
+Исходный системный прокси восстановлен после предыдущего сбоя	Previous system proxy restored after a failure	Vorheriger Systemproxy nach einem Fehler wiederhergestellt	Proxy anterior restaurado tras un fallo	已在上次故障后恢复系统代理
+Ошибка восстановления системного прокси: {e}	System proxy recovery failed: {}	Systemproxy-Wiederherstellung fehlgeschlagen: {}	Error al restaurar el proxy: {}	恢复系统代理失败：{}
+Не удалось сохранить активацию. Запрос на сервер не отправлен	Could not save activation. No request was sent	Aktivierung konnte nicht gespeichert werden. Keine Anfrage gesendet	No se pudo guardar la activación. No se envió la solicitud	无法保存激活信息，尚未发送请求
+Недоступных привязок: {} · временно используется общий VPN-пул	Unavailable bindings: {} · temporarily using the VPN pool	Nicht verfügbare Zuweisungen: {} · vorübergehend VPN-Pool	Asignaciones no disponibles: {} · usando grupo VPN temporalmente	不可用绑定：{} · 暂时使用通用 VPN 组
+Подключение уже остановлено	Connection already stopped	Verbindung bereits beendet	La conexión ya está detenida	连接已停止
+Не удалось открыть защищённые настройки	Could not open protected settings	Geschützte Einstellungen konnten nicht geöffnet werden	No se pudieron abrir los ajustes protegidos	无法打开受保护的设置
+Файл настроек повреждён; он сохранён на диске	Settings file is damaged; the original is preserved	Einstellungsdatei beschädigt; Original bleibt erhalten	Archivo de ajustes dañado; se conserva el original	设置文件损坏，原文件已保留
+Не удалось сохранить настройки перед перезапуском	Could not save settings before restarting	Einstellungen konnten vor Neustart nicht gespeichert werden	No se pudieron guardar ajustes antes de reiniciar	重启前无法保存设置
+Запрос прав администратора отменён или не выполнен	Administrator request was cancelled or failed	Administratoranfrage abgebrochen oder fehlgeschlagen	Solicitud de administrador cancelada o fallida	管理员授权已取消或失败
+Подключено · TUN и системный прокси Windows включены	Connected · TUN and Windows proxy enabled	Verbunden · TUN und Windows-Proxy aktiv	Conectado · TUN y proxy de Windows activos	已连接 · TUN 和 Windows 代理已启用
+Подключено · TUN-адаптер активен	Connected · TUN adapter active	Verbunden · TUN-Adapter aktiv	Conectado · adaptador TUN activo	已连接 · TUN 适配器已启用
+Подключено · системный прокси Windows включён	Connected · Windows proxy enabled	Verbunden · Windows-Proxy aktiv	Conectado · proxy de Windows activo	已连接 · Windows 系统代理已启用
+Подключено · локальный HTTP / SOCKS5 127.0.0.1:17890	Connected · local HTTP / SOCKS5 127.0.0.1:17890	Verbunden · lokal HTTP / SOCKS5 127.0.0.1:17890	Conectado · HTTP / SOCKS5 local 127.0.0.1:17890	已连接 · 本地 HTTP / SOCKS5 127.0.0.1:17890
+Отключено · TUN остановлен, настройки прокси восстановлены	Disconnected · TUN stopped, proxy settings restored	Getrennt · TUN beendet, Proxyeinstellungen wiederhergestellt	Desconectado · TUN detenido, proxy restaurado	已断开 · TUN 已停止，代理设置已恢复
+Отключено · TUN остановлен	Disconnected · TUN stopped	Getrennt · TUN beendet	Desconectado · TUN detenido	已断开 · TUN 已停止
+Отключено · исходные настройки прокси восстановлены	Disconnected · previous proxy settings restored	Getrennt · vorherige Proxyeinstellungen wiederhergestellt	Desconectado · proxy anterior restaurado	已断开 · 之前的代理设置已恢复
+Локальный прокси остановлен	Local proxy stopped	Lokaler Proxy beendet	Proxy local detenido	本地代理已停止
+Исключения применены · обновите старые вкладки, чтобы открыть новые соединения	Rules applied · reload existing tabs to open new connections	Regeln angewendet · bestehende Tabs für neue Verbindungen neu laden	Reglas aplicadas · recarga pestañas para crear conexiones nuevas	规则已应用 · 请刷新旧标签页以建立新连接
+Маршрутизация применена · переподключено соединений: {}	Routing applied · connections reconnected: {}	Routing angewendet · neu verbundene Verbindungen: {}	Rutas aplicadas · conexiones reiniciadas: {}	路由已应用 · 已重连连接数：{}
+Проверено серверов: {count} · несовместимых: {} · подробности в журнале	Servers checked: {} · incompatible: {} · see log	Server geprüft: {} · inkompatibel: {} · siehe Protokoll	Servidores comprobados: {} · incompatibles: {} · ver registro	已检查服务器：{} · 不兼容：{} · 详情见日志
+Связь через VPN восстановлена	VPN connectivity restored	VPN-Verbindung wiederhergestellt	Conectividad VPN restaurada	VPN 连通性已恢复
+Нет ответа через VPN · проверьте маршрут или сервер	No response through VPN · check route or server	Keine Antwort über VPN · Route oder Server prüfen	Sin respuesta por VPN · revisa la ruta o servidor	VPN 无响应 · 请检查路由或服务器
+Не удалось изменить автозапуск	Could not change startup setting	Autostart konnte nicht geändert werden	No se pudo cambiar el inicio automático	无法更改自启动设置
+Маршруты и заметки экспортированы	Routes and notes exported	Routen und Notizen exportiert	Rutas y notas exportadas	路由和备注已导出
+Ошибка экспорта: {e}	Export failed: {}	Export fehlgeschlagen: {}	Error al exportar: {}	导出失败：{}
+Ошибка диалога файла: {e}	File dialog failed: {}	Dateidialog fehlgeschlagen: {}	Error del diálogo de archivo: {}	文件对话框失败：{}
+Импорт отменён: {e}	Import cancelled: {}	Import abgebrochen: {}	Importación cancelada: {}	导入已取消：{}
+Заметка должна быть не длиннее 4096 байт	Notes must not exceed 4096 bytes	Notizen dürfen 4096 Byte nicht überschreiten	Las notas no deben superar 4096 bytes	备注不能超过 4096 字节
+Проверяем новую ссылку; прежняя сохранится при ошибке…	Checking new link; the previous link is kept if this fails…	Neuer Link wird geprüft; bei Fehler bleibt der bisherige…	Comprobando enlace nuevo; el anterior se conserva si falla…	正在检查新链接，失败时保留原链接…
+Название: до 80 символов, без переносов строк	Name: up to 80 characters, no line breaks	Name: bis zu 80 Zeichen, ohne Zeilenumbrüche	Nombre: hasta 80 caracteres, sin saltos de línea	名称最多 80 个字符，不可换行
+Название подписки сохранено	Subscription name saved	Abonnementname gespeichert	Nombre de suscripción guardado	订阅名称已保存
+Подписка удалена; общие и вручную добавленные серверы сохранены	Subscription deleted; shared and manual servers kept	Abonnement gelöscht; gemeinsame und manuelle Server behalten	Suscripción eliminada; servidores compartidos y manuales conservados	订阅已删除，共享和手动服务器已保留
+Библиотека серверов очищена	Server library cleared	Serverbibliothek geleert	Biblioteca de servidores vaciada	服务器列表已清空
+TUN выбран · для подключения нужны права администратора	TUN selected · administrator permission required	TUN gewählt · Administratorrechte erforderlich	TUN seleccionado · requiere permisos de administrador	已选择 TUN · 连接需要管理员权限
+Выбран режим прокси	Proxy mode selected	Proxymodus gewählt	Modo proxy seleccionado	已选择代理模式
+Все серверы включены	All servers enabled	Alle Server aktiviert	Todos los servidores activados	已启用全部服务器
+Все серверы выключены	All servers disabled	Alle Server deaktiviert	Todos los servidores desactivados	已禁用全部服务器
+Очистить библиотеку	Clear library	Bibliothek leeren	Vaciar biblioteca	清空列表
+Применение маршрутизации без отключения…	Applying routing without disconnecting…	Routing wird ohne Trennung angewendet…	Aplicando rutas sin desconectar…	正在应用路由，无需断开连接…
+Маршрутизация сохранена · применится при подключении	Routing saved · applies when connected	Routing gespeichert · gilt beim Verbinden	Rutas guardadas · se aplicarán al conectar	路由已保存 · 连接时生效
+Такое правило уже существует — измените его отдельно	This rule already exists; edit it separately	Diese Regel existiert bereits; separat bearbeiten	Esta regla ya existe; edítala por separado	此规则已存在，请单独编辑
+Правило больше не существует	Rule no longer exists	Regel existiert nicht mehr	La regla ya no existe	规则已不存在
+Сервер · {}	Server · {}	Server · {}	Servidor · {}	服务器 · {}
+Недоступен · {target}	Unavailable · {}	Nicht verfügbar · {}	No disponible · {}	不可用 · {}
+Не удалось восстановить режим TUN после перезапуска	Could not restore TUN after restarting	TUN konnte nach Neustart nicht wiederhergestellt werden	No se pudo restaurar TUN tras reiniciar	重启后无法恢复 TUN 模式
+Срок доступа истёк. Подключение останавливается; обновите доступ	Access expired. Disconnecting; refresh your access	Zugang abgelaufen. Verbindung wird getrennt; Zugang aktualisieren	Acceso caducado. Desconectando; actualiza tu acceso	访问已过期，正在断开连接，请更新权限
+Дождитесь завершения текущей операции	Wait for the current operation to finish	Warten Sie auf den Abschluss des Vorgangs	Espera a que termine la operación	请等待当前操作完成
+Выберите маршрут для правила	Choose a route for this rule	Route für diese Regel wählen	Elige una ruta para la regla	为此规则选择路由
+Добавьте и включите хотя бы один сервер	Add and enable at least one server	Mindestens einen Server hinzufügen und aktivieren	Añade y activa al menos un servidor	请添加并启用至少一个服务器
+Для общего VPN маршрута включите хотя бы один сервер вне России	Enable at least one server outside Russia for the VPN pool	Für den VPN-Pool mindestens einen Server außerhalb Russlands aktivieren	Activa un servidor fuera de Rusia para el grupo VPN	请为通用 VPN 组启用至少一个俄罗斯境外服务器
+Германия	Germany	Deutschland	Alemania	德国
+Нидерланды	Netherlands	Niederlande	Países Bajos	荷兰
+Финляндия	Finland	Finnland	Finlandia	芬兰
+Швеция	Sweden	Schweden	Suecia	瑞典
+США	United States	USA	Estados Unidos	美国
+Великобритания	United Kingdom	Großbritannien	Reino Unido	英国
+Франция	France	Frankreich	Francia	法国
+Польша	Poland	Polen	Polonia	波兰
+Турция	Türkiye	Türkei	Turquía	土耳其
+Россия	Russia	Russland	Rusia	俄罗斯
+Сингапур	Singapore	Singapur	Singapur	新加坡
+Япония	Japan	Japan	Japón	日本
+Канада	Canada	Kanada	Canadá	加拿大
+Швейцария	Switzerland	Schweiz	Suiza	瑞士
+Украина	Ukraine	Ukraine	Ucrania	乌克兰
+ОАЭ	UAE	VAE	EAU	阿联酋
+Аргентина	Argentina	Argentinien	Argentina	阿根廷
+Австрия	Austria	Österreich	Austria	奥地利
+Австралия	Australia	Australien	Australia	澳大利亚
+Бразилия	Brazil	Brasilien	Brasil	巴西
+Кипр	Cyprus	Zypern	Chipre	塞浦路斯
+Дания	Denmark	Dänemark	Dinamarca	丹麦
+Эстония	Estonia	Estland	Estonia	爱沙尼亚
+Египет	Egypt	Ägypten	Egipto	埃及
+Испания	Spain	Spanien	España	西班牙
+Грузия	Georgia	Georgien	Georgia	格鲁吉亚
+Гонконг	Hong Kong	Hongkong	Hong Kong	香港
+Ирландия	Ireland	Irland	Irlanda	爱尔兰
+Израиль	Israel	Israel	Israel	以色列
+Индия	India	Indien	India	印度
+Италия	Italy	Italien	Italia	意大利
+Южная Корея	South Korea	Südkorea	Corea del Sur	韩国
+Казахстан	Kazakhstan	Kasachstan	Kazajistán	哈萨克斯坦
+Латвия	Latvia	Lettland	Letonia	拉脱维亚
+Молдова	Moldova	Moldau	Moldavia	摩尔多瓦
+Малайзия	Malaysia	Malaysia	Malasia	马来西亚
+Нигерия	Nigeria	Nigeria	Nigeria	尼日利亚
+Норвегия	Norway	Norwegen	Noruega	挪威
+Филиппины	Philippines	Philippinen	Filipinas	菲律宾
+Португалия	Portugal	Portugal	Portugal	葡萄牙
+Таиланд	Thailand	Thailand	Tailandia	泰国
+Тайвань	Taiwan	Taiwan	Taiwán	台湾
+Вьетнам	Vietnam	Vietnam	Vietnam	越南
+Автообновление при запуске и каждые 6 часов.	Refreshes at startup and every 6 hours.	Aktualisierung beim Start und alle 6 Stunden.	Se actualiza al iniciar y cada 6 horas.	启动时及每 6 小时自动更新。
+Новый список серверов применится при следующем подключении.	The new server list will take effect on the next connection.	Die neue Serverliste gilt ab der nächsten Verbindung.	La nueva lista se aplicará en la próxima conexión.	新服务器列表将在下次连接时生效。
+Обновить подписку	Refresh subscription	Abonnement aktualisieren	Actualizar suscripción	更新订阅
+обновляется…	refreshing…	wird aktualisiert…	actualizando…	正在更新…
+ошибка обновления	refresh failed	Aktualisierung fehlgeschlagen	error de actualización	更新失败
+Список серверов подписки обновлён	Subscription servers refreshed	Abonnementserver aktualisiert	Servidores de la suscripción actualizados	订阅服务器已更新
+Список серверов обновлён · применится при следующем подключении	Server list refreshed · applies on the next connection	Serverliste aktualisiert · gilt ab der nächsten Verbindung	Lista actualizada · se aplicará en la próxima conexión	服务器列表已更新 · 下次连接时生效
+Маршрут для Antigravity	Antigravity route	Route für Antigravity	Ruta de Antigravity	Antigravity 路由
+Выберите сервер. TUN охватывает трафик приложения по имени .exe.	Choose a server. TUN captures app traffic by executable name.	Server wählen. TUN erfasst App-Verkehr anhand des EXE-Namens.	Elige un servidor. TUN captura el tráfico según el nombre del ejecutable.	请选择服务器。TUN 可按可执行文件名捕获应用流量。
+Проверить регион	Check region	Region prüfen	Comprobar región	检测地区
+Проверка региона…	Checking region…	Region wird geprüft…	Comprobando región…	正在检测地区…
+Проверка региона… · {}	Checking region… · {}	Region wird geprüft… · {}	Comprobando región… · {}	正在检测地区… · {}
+Для проверки выберите конкретный включённый сервер	Choose a specific enabled server to run the check	Wähle einen konkreten aktiven Server für die Prüfung	Elige un servidor habilitado para hacer la prueba	请选择一个已启用的具体服务器进行检测
+Регион заблокирован (HTTP {}) · {}	Region blocked (HTTP {}) · {}	Region gesperrt (HTTP {}) · {}	Región bloqueada (HTTP {}) · {}	地区受限（HTTP {}）· {}
+Блокировка региона не обнаружена (HTTP {}) · {}	No region block detected (HTTP {}) · {}	Keine Regionssperre erkannt (HTTP {}) · {}	No se detectó un bloqueo regional (HTTP {}) · {}	未检测到地区限制（HTTP {}）· {}
+Проверка региона не дала ответа (HTTP {}) · {}	Region check inconclusive (HTTP {}) · {}	Regionstest nicht eindeutig (HTTP {}) · {}	Prueba de región no concluyente (HTTP {}) · {}	无法确定地区状态（HTTP {}）· {}
+Нет ответа Google через выбранный сервер	No response from Google through the selected server	Keine Antwort von Google über den gewählten Server	Google no responde a través del servidor seleccionado	所选服务器未收到 Google 响应
+Для этого адреса или приложения уже есть другое правило. Откройте его и измените маршрут.	A rule for this address or app already exists. Open it to change the route.	Für diese Adresse oder App gibt es bereits eine Regel. Öffne sie, um die Route zu ändern.	Ya existe una regla para esta dirección o aplicación. Ábrela para cambiar la ruta.	此地址或应用已有规则。请打开该规则修改路由。

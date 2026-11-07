@@ -1,6 +1,9 @@
 #![windows_subsystem = "windows"]
 
+mod help;
+mod i18n;
 mod icons;
+mod scrolling;
 mod ui;
 #[cfg(windows)]
 fn tray_pixels(logo: &[u8], state: u8) -> Vec<u8> {
@@ -57,6 +60,8 @@ enum Update {
     Disconnected,
     Error(String),
     Imported(ImportReport, Option<String>, Option<u64>),
+    SubscriptionFetched(u64, String, Result<ImportReport, String>),
+    AntigravityChecked(String, Result<multilink_mihomo::AntigravityCheck, String>),
     SaveError,
     Notice(String),
     OperationError(String),
@@ -72,6 +77,7 @@ enum Update {
     ),
     TunnelReachable(bool),
 }
+#[derive(Clone)]
 struct UiUpdates {
     channel: mpsc::Sender<Update>,
     wake: Option<EventLoopProxy<()>>,
@@ -375,9 +381,13 @@ enum Page {
     Statistics,
     Settings,
     About,
+    Help,
 }
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 enum Action {
+    Language,
+    SelectLanguage(usize),
+    HelpSection(usize),
     ActivateAccess,
     RefreshAccess,
     Nav(Page),
@@ -399,6 +409,8 @@ enum Action {
     ReplaceRoutes,
     AddRule,
     AddProcessRule,
+    AddAntigravity,
+    CheckAntigravity,
     AddRuDomains,
     ClearServers,
     ToggleSystemProxy,
@@ -417,6 +429,7 @@ enum Action {
 }
 #[derive(Clone, Copy, PartialEq)]
 enum Modal {
+    Language,
     AccessCode,
     Import,
     Rule,
@@ -456,6 +469,14 @@ struct App {
     tx: mpsc::Sender<Command>,
     rx: mpsc::Receiver<Update>,
     worker: Option<std::thread::JoinHandle<()>>,
+    updates: UiUpdates,
+    next_subscription_refresh: std::collections::HashMap<u64, Instant>,
+    refreshing_subscription: Option<u64>,
+    pending_subscription: Option<(u64, String, Result<ImportReport, String>)>,
+    subscription_errors: std::collections::HashSet<u64>,
+    subscription_changes_pending: bool,
+    antigravity_checking: bool,
+    antigravity_result: Option<(String, String)>,
     connected: bool,
     system_proxy_active: bool,
     busy: bool,
@@ -482,6 +503,10 @@ struct App {
     imported_routing: Option<multilink_core::RoutingConfig>,
     selecting_target: bool,
     target_page: usize,
+    scroll_bar: Option<scrolling::ScrollBar>,
+    scroll_drag: Option<f64>,
+    #[cfg(windows)]
+    tray_labels: Vec<(tray_icon::menu::MenuItem, &'static str)>,
     logo: Arc<[u8]>,
     #[cfg(windows)]
     tray: Option<tray_icon::TrayIcon>,
@@ -492,19 +517,132 @@ struct App {
     #[cfg(windows)]
     tray_rule: Option<tray_icon::menu::MenuItem>,
 }
+const SUBSCRIPTION_INTERVAL: Duration = Duration::from_secs(6 * 60 * 60);
+const SUBSCRIPTION_RETRY: Duration = Duration::from_secs(15 * 60);
+
 impl App {
+    fn managed_subscription(&self, id: u64) -> bool {
+        self.settings
+            .access
+            .as_ref()
+            .is_some_and(|a| a.subscription_id == id)
+    }
+
+    fn refresh_subscription(&mut self, id: u64) {
+        if self.refreshing_subscription.is_some() || self.managed_subscription(id) {
+            return;
+        }
+        let Some(url) = self
+            .settings
+            .subscriptions
+            .iter()
+            .find(|source| source.id == id)
+            .map(|source| source.url.clone())
+        else {
+            return;
+        };
+        self.refreshing_subscription = Some(id);
+        let updates = self.updates.clone();
+        std::thread::spawn(move || {
+            let result = multilink_mihomo::fetch_subscription(&url)
+                .and_then(|body| multilink_core::import_subscription(&body));
+            let _ = updates.send(Update::SubscriptionFetched(id, url, result));
+        });
+        self.redraw();
+    }
+
+    fn poll_subscriptions(&mut self) {
+        if self.busy || self.modal.is_some() || self.smoke_tray || self.restart_pending {
+            return;
+        }
+        if let Some((id, url, result)) = self.pending_subscription.take() {
+            self.refreshing_subscription = None;
+            if self
+                .settings
+                .subscriptions
+                .iter()
+                .any(|s| s.id == id && s.url == url)
+                && !self.managed_subscription(id)
+            {
+                let result = result.and_then(|report| {
+                    let old: Vec<_> = self
+                        .settings
+                        .nodes
+                        .iter()
+                        .filter(|node| node.subscription_ids.contains(&id))
+                        .map(|node| (node.name.clone(), node.proxy.clone()))
+                        .collect();
+                    multilink_core::update_subscription(
+                        &mut self.settings,
+                        Some(id),
+                        &url,
+                        report.nodes,
+                    )?;
+                    let changed = !old.iter().map(|(name, proxy)| (name, proxy)).eq(self
+                        .settings
+                        .nodes
+                        .iter()
+                        .filter(|node| node.subscription_ids.contains(&id))
+                        .map(|node| (&node.name, &node.proxy)));
+                    for warning in report.skipped {
+                        self.logs.push_front(warning);
+                    }
+                    self.save();
+                    Ok(changed)
+                });
+                let interval = match result {
+                    Ok(changed) => {
+                        self.subscription_errors.remove(&id);
+                        self.subscription_changes_pending |= self.connected && changed;
+                        if changed {
+                            self.antigravity_result = None;
+                        }
+                        self.notify(if self.connected && changed {
+                            "Список серверов обновлён · применится при следующем подключении"
+                        } else {
+                            "Список серверов подписки обновлён"
+                        });
+                        SUBSCRIPTION_INTERVAL
+                    }
+                    Err(error) => {
+                        self.subscription_errors.insert(id);
+                        self.notify(error);
+                        SUBSCRIPTION_RETRY
+                    }
+                };
+                self.next_subscription_refresh
+                    .insert(id, Instant::now() + interval);
+            }
+            self.redraw();
+        }
+        if self.window.is_some() && self.refreshing_subscription.is_none() {
+            let due = self
+                .settings
+                .subscriptions
+                .iter()
+                .find(|s| {
+                    !self.managed_subscription(s.id)
+                        && self
+                            .next_subscription_refresh
+                            .get(&s.id)
+                            .is_none_or(|time| Instant::now() >= *time)
+                })
+                .map(|s| s.id);
+            if let Some(id) = due {
+                self.refresh_subscription(id);
+            }
+        }
+    }
+
     fn new(wake: Option<EventLoopProxy<()>>) -> Self {
         let (tx, commands) = mpsc::channel();
         let (updates, rx) = mpsc::channel();
-        let worker = std::thread::spawn(move || {
-            worker(
-                commands,
-                UiUpdates {
-                    channel: updates,
-                    wake,
-                },
-            )
-        });
+        let updates = UiUpdates {
+            channel: updates,
+            wake,
+        };
+        let worker_updates = updates.clone();
+        let worker = std::thread::spawn(move || worker(commands, worker_updates));
         let loaded = multilink_platform::load()
             .map_err(|_| "Не удалось открыть защищённые настройки".to_owned())
             .and_then(|data| match data {
@@ -533,6 +671,14 @@ impl App {
         let first_run = settings.nodes.is_empty();
         Self {
             window: None,
+            updates,
+            next_subscription_refresh: Default::default(),
+            refreshing_subscription: None,
+            pending_subscription: None,
+            subscription_errors: Default::default(),
+            subscription_changes_pending: false,
+            antigravity_checking: false,
+            antigravity_result: None,
             surface: None,
             text: TextSystem::new(),
             renderer,
@@ -588,6 +734,10 @@ impl App {
             imported_routing: None,
             selecting_target: false,
             target_page: 0,
+            scroll_bar: None,
+            scroll_drag: None,
+            #[cfg(windows)]
+            tray_labels: Vec::new(),
             logo: image::load_from_memory(include_bytes!("../../../logo.png"))
                 .expect("embedded logo")
                 .resize_exact(64, 64, image::imageops::FilterType::Lanczos3)
@@ -624,7 +774,7 @@ impl App {
                 return false;
             }
         }
-        match multilink_platform::restart_elevated(connect_after_restart) {
+        match multilink_platform::restart_elevated(connect_after_restart, self.compact) {
             Ok(()) => {
                 self.restart_pending = true;
                 true
@@ -657,6 +807,28 @@ impl App {
                 continue;
             }
             match update {
+                Update::SubscriptionFetched(id, url, result) => {
+                    self.pending_subscription = Some((id, url, result));
+                }
+                Update::AntigravityChecked(name, result) => {
+                    self.antigravity_checking = false;
+                    let message = match result {
+                        Ok(multilink_mihomo::AntigravityCheck::Blocked(status)) => {
+                            format!("Регион заблокирован (HTTP {status}) · {name}")
+                        }
+                        Ok(multilink_mihomo::AntigravityCheck::Responded(status)) => {
+                            format!("Блокировка региона не обнаружена (HTTP {status}) · {name}")
+                        }
+                        Ok(multilink_mihomo::AntigravityCheck::Inconclusive(status)) => {
+                            format!("Проверка региона не дала ответа (HTTP {status}) · {name}")
+                        }
+                        Err(error) => format!("{error} · {name}"),
+                    };
+                    self.antigravity_result =
+                        Some((multilink_core::server_route_target(&name), message.clone()));
+                    self.logs.push_front(message);
+                    self.logs.truncate(100);
+                }
                 Update::AccessSynced(token, doc) => {
                     match multilink_core::install_access(&mut self.settings, token, doc) {
                         Ok(()) => self.save(),
@@ -679,6 +851,7 @@ impl App {
                     self.notify("Доступ истёк или отозван. Обновите подписку у администратора");
                 }
                 Update::Connected(system_proxy) => {
+                    self.subscription_changes_pending = false;
                     self.connected = true;
                     #[cfg(windows)]
                     if let Some(item) = &self.tray_connect {
@@ -702,6 +875,7 @@ impl App {
                     });
                 }
                 Update::Disconnected => {
+                    self.subscription_changes_pending = false;
                     self.save();
                     let automatic = self.system_proxy_active;
                     self.connected = false;
@@ -778,15 +952,22 @@ impl App {
                 Update::Imported(report, url, source) => {
                     let count = report.nodes.len();
                     if let Some(url) = url {
-                        if let Err(error) = multilink_core::update_subscription(
+                        match multilink_core::update_subscription(
                             &mut self.settings,
                             source,
                             &url,
                             report.nodes,
                         ) {
-                            self.busy = false;
-                            self.notify(error);
-                            continue;
+                            Ok(id) => {
+                                self.next_subscription_refresh
+                                    .insert(id, Instant::now() + SUBSCRIPTION_INTERVAL);
+                                self.subscription_errors.remove(&id);
+                            }
+                            Err(error) => {
+                                self.busy = false;
+                                self.notify(error);
+                                continue;
+                            }
                         }
                     } else {
                         multilink_core::merge_nodes(&mut self.settings.nodes, report.nodes);
@@ -847,6 +1028,23 @@ impl App {
     fn action(&mut self, action: Action) {
         self.redraw();
         match action {
+            Action::HelpSection(section) => {
+                self.offset = section.min(help::COUNT - 1);
+                self.redraw();
+            }
+            Action::Language => {
+                self.modal = Some(Modal::Language);
+                self.input_rect = None;
+            }
+            Action::SelectLanguage(index) => {
+                if let Some((key, _)) = i18n::OPTIONS.get(index) {
+                    self.settings.language = (*key).into();
+                }
+                self.modal = None;
+                self.save();
+                self.sync_tray();
+                self.redraw();
+            }
             Action::ActivateAccess if !self.busy && !self.connected => {
                 self.modal = Some(Modal::AccessCode);
                 self.edit.set_text(
@@ -869,6 +1067,8 @@ impl App {
                 }
             }
             Action::Nav(page) => {
+                self.scroll_bar = None;
+                self.scroll_drag = None;
                 self.page = page;
                 self.offset = 0;
             }
@@ -877,20 +1077,26 @@ impl App {
                     self.notify("Не удалось открыть браузер: https://desk.everty.ru/opensource");
                 }
             }
-            Action::RefreshSubscription(id) if !self.busy && !self.connected => {
+            Action::RefreshSubscription(id) if !self.busy => {
                 if self
                     .settings
                     .access
                     .as_ref()
                     .is_some_and(|a| a.subscription_id == id)
                 {
-                    self.action(Action::RefreshAccess);
+                    if !self.connected {
+                        self.action(Action::RefreshAccess);
+                    } else {
+                        self.notify("Управляемый доступ обновляется отдельно");
+                    }
                     return;
                 }
-                if let Some(source) = self.settings.subscriptions.iter().find(|s| s.id == id) {
-                    self.busy = true;
-                    let _ = self.tx.send(Command::Import(source.url.clone(), Some(id)));
-                    self.notify("Обновление подписки…");
+                if let Some(active) = self.refreshing_subscription {
+                    if id != active {
+                        self.next_subscription_refresh.insert(id, Instant::now());
+                    }
+                } else {
+                    self.refresh_subscription(id);
                 }
             }
             Action::EditSubscriptionUrl(id)
@@ -1024,7 +1230,11 @@ impl App {
                 self.imported_routing = None;
             }
             Action::Close => {}
-            Action::Import | Action::AddRule | Action::AddRuDomains | Action::AddProcessRule
+            Action::Import
+            | Action::AddRule
+            | Action::AddRuDomains
+            | Action::AddProcessRule
+            | Action::AddAntigravity
                 if !self.busy && (!matches!(action, Action::Import) || !self.connected) =>
             {
                 self.editing_rule = None;
@@ -1033,7 +1243,7 @@ impl App {
                 self.modal = Some(match action {
                     Action::Import => Modal::Import,
                     Action::AddRuDomains => Modal::RuRule,
-                    Action::AddProcessRule => Modal::ProcessRule,
+                    Action::AddProcessRule | Action::AddAntigravity => Modal::ProcessRule,
                     _ => Modal::Rule,
                 });
                 self.edit.clear();
@@ -1042,10 +1252,56 @@ impl App {
                 }
                 self.edit_scroll = 0.0;
                 self.rule_target = 0;
+                if action == Action::AddAntigravity {
+                    self.edit.set_text("Antigravity.exe");
+                    if let Some(index) = self.settings.rules.iter().position(|rule| {
+                        multilink_core::rule_key(rule) == "PROCESS-NAME,antigravity.exe"
+                    }) {
+                        self.action(Action::EditRule(index));
+                    } else {
+                        let preferred = self
+                            .settings
+                            .nodes
+                            .iter()
+                            .find(|node| {
+                                node.enabled
+                                    && multilink_core::node_country(&node.name).as_deref()
+                                        == Some("US")
+                            })
+                            .map(|node| multilink_core::server_route_target(&node.name));
+                        self.rule_target = preferred
+                            .and_then(|target| {
+                                self.rule_targets().iter().position(|(id, _)| *id == target)
+                            })
+                            .unwrap_or(1);
+                    }
+                }
                 self.selecting_target = false;
-                self.target_page = 0;
+                self.target_page = self.rule_target / 18;
                 self.field_focused = true;
                 self.reset_caret();
+            }
+            Action::CheckAntigravity if !self.busy && !self.antigravity_checking => {
+                let target = self
+                    .rule_targets()
+                    .get(self.rule_target)
+                    .map(|(id, _)| id.clone());
+                let mut effective = self.settings.clone();
+                multilink_core::exclude_expired_access(&mut effective);
+                let node = effective.nodes.into_iter().find(|n| {
+                    n.enabled
+                        && target.as_deref() == Some(&multilink_core::server_route_target(&n.name))
+                });
+                if let Some(node) = node {
+                    let updates = self.updates.clone();
+                    self.antigravity_checking = true;
+                    std::thread::spawn(move || {
+                        let result = multilink_mihomo::check_antigravity(&node);
+                        let _ = updates.send(Update::AntigravityChecked(node.name, result));
+                    });
+                } else {
+                    self.notify("Для проверки выберите конкретный включённый сервер");
+                }
             }
             Action::Import | Action::AddRule | Action::AddRuDomains | Action::AddProcessRule => {
                 self.notify("Отключитесь перед изменением конфигурации")
@@ -1203,6 +1459,8 @@ impl App {
                                 self.settings.access = None;
                             }
                             multilink_core::remove_subscription(&mut self.settings, id);
+                            self.next_subscription_refresh.remove(&id);
+                            self.subscription_errors.remove(&id);
                             self.offset = 0;
                             self.modal = None;
                             self.save();
@@ -1214,6 +1472,8 @@ impl App {
                     Some(Modal::ClearLibrary) => {
                         self.settings.nodes.clear();
                         self.settings.subscriptions.clear();
+                        self.next_subscription_refresh.clear();
+                        self.subscription_errors.clear();
                         self.settings.access = None;
                         self.settings.pending_activation = None;
                         self.settings.imports = 0;
@@ -1221,6 +1481,7 @@ impl App {
                         self.save();
                         self.notify("Библиотека серверов очищена");
                     }
+                    Some(Modal::Language) => {}
                     Some(Modal::Rule) | Some(Modal::ProcessRule) => {
                         let target = self
                             .rule_targets()
@@ -1364,13 +1625,22 @@ impl App {
         {
             if let Some(item) = &self.tray_connect {
                 item.set_enabled(!self.busy);
-                item.set_text(if self.busy {
-                    "Подождите…"
-                } else if self.connected {
-                    "Отключиться"
-                } else {
-                    "Подключиться"
-                });
+                item.set_text(
+                    i18n::tr(
+                        self.language(),
+                        if self.busy {
+                            "Подождите…"
+                        } else if self.connected {
+                            "Отключиться"
+                        } else {
+                            "Подключиться"
+                        },
+                    )
+                    .as_ref(),
+                );
+            }
+            for (item, label) in &self.tray_labels {
+                item.set_text(i18n::tr(self.language(), label).as_ref());
             }
             if let Some(item) = &self.tray_rule {
                 item.set_enabled(!self.busy);
@@ -1392,15 +1662,19 @@ impl App {
                         }
                     }
                 }
-                let _ = tray.set_tooltip(Some(if self.busy {
-                    "Everty MultiLink · выполняется операция"
-                } else if self.connected && self.settings.tun {
-                    "Everty MultiLink · TUN подключён"
-                } else if self.connected {
-                    "Everty MultiLink · подключено"
-                } else {
-                    "Everty MultiLink · отключено"
-                }));
+                let tooltip = i18n::tr(
+                    self.language(),
+                    if self.busy {
+                        "Everty MultiLink · выполняется операция"
+                    } else if self.connected && self.settings.tun {
+                        "Everty MultiLink · TUN подключён"
+                    } else if self.connected {
+                        "Everty MultiLink · подключено"
+                    } else {
+                        "Everty MultiLink · отключено"
+                    },
+                );
+                let _ = tray.set_tooltip(Some(tooltip.as_ref()));
             }
         }
     }
@@ -1459,30 +1733,24 @@ impl App {
     fn submit_many_rules(&mut self, additions: Vec<String>) {
         let keys: Vec<_> = additions
             .iter()
-            .filter_map(|rule| rule.rsplit_once(',').map(|(key, _)| key))
+            .map(|rule| multilink_core::rule_key(rule))
             .collect();
         let mut rules = self.settings.rules.clone();
         if let Some(index) = self.editing_rule {
             if rules.iter().enumerate().any(|(i, existing)| {
-                i != index
-                    && existing
-                        .rsplit_once(',')
-                        .is_some_and(|(old, _)| keys.contains(&old))
+                i != index && keys.contains(&multilink_core::rule_key(existing))
             }) {
-                self.notify("Такое правило уже существует — измените его отдельно");
+                self.notify("Для этого адреса или приложения уже есть другое правило. Откройте его и измените маршрут.");
                 return;
             }
             if index >= rules.len() {
                 self.notify("Правило больше не существует");
                 return;
             }
-            rules.remove(index);
+            rules.splice(index..=index, additions.iter().cloned());
         } else {
-            rules.retain(|existing| {
-                existing
-                    .rsplit_once(',')
-                    .is_none_or(|(old, _)| !keys.contains(&old))
-            });
+            rules.retain(|existing| !keys.contains(&multilink_core::rule_key(existing)));
+            rules.extend(additions.iter().cloned());
         }
         let mut notes = self.settings.rule_notes.clone();
         if let Some(old) = self.editing_rule.and_then(|i| self.settings.rules.get(i)) {
@@ -1496,7 +1764,6 @@ impl App {
             }
         }
         self.pending_notes = Some(notes);
-        rules.extend(additions);
         self.change_routing(rules, self.settings.policy);
     }
     fn redraw(&self) {
@@ -1514,25 +1781,48 @@ impl App {
                 .into_iter()
                 .map(|(code, name)| (format!("COUNTRY-{code}"), name.to_owned())),
         );
-        options.extend(
-            self.settings
-                .nodes
-                .iter()
-                .filter(|n| n.enabled)
-                .map(|n| (n.name.clone(), format!("Сервер · {}", n.name))),
-        );
+        let mut servers: Vec<_> = self
+            .settings
+            .nodes
+            .iter()
+            .filter(|n| n.enabled)
+            .map(|node| (multilink_core::node_country(&node.name), node))
+            .collect();
+        servers.sort_by(|(a, _), (b, _)| {
+            let order = |code: Option<&str>| match code {
+                Some("US") => 0,
+                Some(_) => 1,
+                None => 2,
+            };
+            order(a.as_deref())
+                .cmp(&order(b.as_deref()))
+                .then_with(|| a.cmp(b))
+        });
+        options.extend(servers.into_iter().map(|(code, n)| {
+            (
+                multilink_core::server_route_target(&n.name),
+                code.map_or_else(
+                    || format!("Сервер · {}", n.name),
+                    |code| format!("{code} · {}", n.name),
+                ),
+            )
+        }));
         if let Some(target) = self
             .editing_rule
             .and_then(|i| self.settings.rules.get(i))
             .and_then(|r| r.split(',').nth(2))
         {
             if !options.iter().any(|(id, _)| id == target) {
-                options.push((target.into(), format!("Недоступен · {target}")));
+                let label =
+                    multilink_core::server_route_name(target).unwrap_or_else(|| target.into());
+                options.push((target.into(), format!("Недоступен · {label}")));
             }
         }
         options
     }
     fn set_compact(&mut self, compact: bool) {
+        self.scroll_bar = None;
+        self.scroll_drag = None;
         self.compact = compact;
         self.modal = None;
         self.editing_rule = None;
@@ -1561,6 +1851,15 @@ impl App {
     fn reset_caret(&mut self) {
         self.caret_on = true;
         self.next_caret = Instant::now() + Duration::from_millis(500);
+    }
+    fn apply_restart_arguments(&mut self, args: &[String]) {
+        if args.iter().any(|arg| arg == "--elevated-restart") {
+            self.compact = args.iter().any(|arg| arg == "--compact-after-elevation");
+            if !self.compact {
+                self.page = Page::Settings;
+            }
+            self.connect_after_restart = args.iter().any(|arg| arg == "--connect-after-elevation");
+        }
     }
     fn action_at_pointer(&self) -> Option<Action> {
         self.hits
@@ -1683,7 +1982,7 @@ impl ApplicationHandler for App {
             let separator = PredefinedMenuItem::separator();
             if menu
                 .append_items(&[
-                    &open, &compact, &advanced, &separator, &connect, &rule, &exit,
+                    &connect, &separator, &open, &compact, &advanced, &rule, &exit,
                 ])
                 .is_ok()
             {
@@ -1693,6 +1992,7 @@ impl ApplicationHandler for App {
                         .iter()
                         .map(|item| item.id().as_ref().to_owned())
                         .collect();
+                    assert_eq!(ids.first().map(String::as_str), Some("connect"));
                     for required in ["open", "compact", "advanced", "connect", "rule", "exit"] {
                         assert!(
                             ids.iter().any(|id| id == required),
@@ -1709,8 +2009,16 @@ impl ApplicationHandler for App {
                         .build()
                     {
                         self.tray = Some(tray);
+                        self.tray_labels = vec![
+                            (open, "Открыть MultiLink"),
+                            (compact, "Компактное окно"),
+                            (advanced, "Расширенное окно"),
+                            (rule.clone(), "Правило из буфера…"),
+                            (exit, "Выход"),
+                        ];
                         self.tray_connect = Some(connect);
                         self.tray_rule = Some(rule);
+                        self.sync_tray();
                     }
                 }
             }
@@ -1764,6 +2072,7 @@ impl ApplicationHandler for App {
         }
     }
     fn about_to_wait(&mut self, event_loop: &ActiveEventLoop) {
+        self.poll_subscriptions();
         if self.connected
             && !self.busy
             && self.settings.access.as_ref().is_some_and(|a| {
@@ -1909,6 +2218,11 @@ impl ApplicationHandler for App {
                     .unwrap_or(1.0);
                 let old_field = self.input_rect.is_some_and(|r| r.contains(self.pointer));
                 self.pointer = LogicalPoint::new(position.x / scale, position.y / scale);
+                if let (Some(grab), Some(bar)) = (self.scroll_drag, self.scroll_bar) {
+                    self.offset = bar.offset_at(self.pointer.y.0 - grab);
+                    self.redraw();
+                    return;
+                }
                 let hover = self.action_at_pointer();
                 if hover != self.hover {
                     self.hover = hover;
@@ -1934,6 +2248,7 @@ impl ApplicationHandler for App {
                 self.redraw();
             }
             WindowEvent::Focused(false) => {
+                self.scroll_drag = None;
                 self.pressed = None;
                 self.redraw();
             }
@@ -1945,6 +2260,20 @@ impl ApplicationHandler for App {
                 self.redraw();
                 match state {
                     ElementState::Pressed => {
+                        if let Some(bar) = self
+                            .scroll_bar
+                            .filter(|b| b.track.inset(Insets::all(-5.0)).contains(self.pointer))
+                        {
+                            let grab = if bar.thumb.contains(self.pointer) {
+                                self.pointer.y.0 - bar.thumb.top()
+                            } else {
+                                bar.thumb.size.height.0 / 2.0
+                            };
+                            self.scroll_drag = Some(grab);
+                            self.offset = bar.offset_at(self.pointer.y.0 - grab);
+                            self.pressed = None;
+                            return;
+                        }
                         self.pressed = self.action_at_pointer();
                         if let Some(rect) = self.input_rect.filter(|r| r.contains(self.pointer)) {
                             self.field_focused = true;
@@ -1958,6 +2287,9 @@ impl ApplicationHandler for App {
                         }
                     }
                     ElementState::Released => {
+                        if self.scroll_drag.take().is_some() {
+                            return;
+                        }
                         let pressed = self.pressed.take();
                         if pressed.is_some() && pressed == self.action_at_pointer() {
                             self.action(pressed.unwrap());
@@ -1972,14 +2304,9 @@ impl ApplicationHandler for App {
                     winit::event::MouseScrollDelta::LineDelta(_, y) => y < 0.0,
                     winit::event::MouseScrollDelta::PixelDelta(p) => p.y < 0.0,
                 };
-                let count = match self.page {
-                    Page::Routing => self.settings.rules.len(),
-                    Page::Subscriptions => self.settings.subscriptions.len(),
-                    Page::Servers | Page::Dashboard => self.settings.nodes.len(),
-                    _ => 0,
-                };
+                let max = self.scroll_bar.map(|b| b.max).unwrap_or(0);
                 if down {
-                    self.offset = (self.offset + 1).min(count.saturating_sub(1));
+                    self.offset = (self.offset + 1).min(max);
                 } else {
                     self.offset = self.offset.saturating_sub(1);
                 }
@@ -2165,10 +2492,13 @@ fn main() {
         )
     };
     let mut app = App::new(event_loop.as_ref().map(EventLoop::create_proxy));
-    if args.iter().any(|arg| arg == "--elevated-restart") {
-        app.compact = false;
-        app.page = Page::Settings;
-        app.connect_after_restart = args.iter().any(|arg| arg == "--connect-after-elevation");
+    app.apply_restart_arguments(&args);
+    if offline {
+        if let Some(index) = args.iter().position(|a| a == "--language") {
+            if let Some(language) = args.get(index + 1) {
+                app.settings.language = language.clone();
+            }
+        }
     }
     if args.iter().any(|s| s == "--bench-ui") {
         app.compact = false;
@@ -2220,8 +2550,10 @@ fn main() {
                 "servers" => Page::Servers,
                 "routing" => Page::Routing,
                 "settings" => Page::Settings,
+                "language" => Page::Settings,
                 "about" => Page::About,
                 "access" => Page::Access,
+                "help" => Page::Help,
                 "subscriptions" => Page::Subscriptions,
                 "statistics" => Page::Statistics,
                 _ => Page::Dashboard,
@@ -2375,6 +2707,52 @@ fn main() {
                 app.notice = "Тестовые данные · без подключения к сети".into();
             }
         }
+        if let Some(page) = args.get(i + 2) {
+            if matches!(page.as_str(), "scroll-servers" | "scroll-routing") {
+                app.settings = Settings::default();
+                if let Some(index) = args.iter().position(|a| a == "--language") {
+                    if let Some(language) = args.get(index + 1) {
+                        app.settings.language = language.clone();
+                    }
+                }
+                let template = multilink_core::parse_subscription(
+                    "vless://00000000-0000-4000-8000-000000000001@example.invalid:443#DE-demo",
+                )
+                .unwrap()
+                .remove(0);
+                app.settings.nodes = (0..40)
+                    .map(|i| {
+                        let mut n = template.clone();
+                        n.name = format!("DE-demo-{:02}", i + 1);
+                        n
+                    })
+                    .collect();
+                app.settings.rules = (0..40)
+                    .map(|i| format!("DOMAIN-SUFFIX,site-{i}.example.invalid,MULTILINK"))
+                    .collect();
+                app.page = if page == "scroll-servers" {
+                    Page::Servers
+                } else {
+                    Page::Routing
+                };
+                app.notice = "Тестовые данные · без подключения к сети".into();
+            }
+        }
+        if let Some(index) = args.iter().position(|a| a == "--section") {
+            app.offset = args
+                .get(index + 1)
+                .and_then(|s| s.parse::<usize>().ok())
+                .unwrap_or(0);
+        }
+        // Fixtures may reset Settings; apply the preview language last.
+        if args.get(i + 2).is_some_and(|p| p == "language") {
+            app.modal = Some(Modal::Language);
+        }
+        if let Some(index) = args.iter().position(|a| a == "--language") {
+            if let Some(language) = args.get(index + 1) {
+                app.settings.language = language.clone();
+            }
+        }
         let (width, height) = if app.compact {
             (390, 500)
         } else if args.iter().any(|a| a == "--small") {
@@ -2510,6 +2888,25 @@ mod routing_workflow_tests {
     use super::*;
     use multilink_core::Policy;
     #[test]
+    fn elevated_restart_preserves_requested_window_mode_and_autoconnect() {
+        let mut app = App::new(None);
+        let compact: Vec<_> = multilink_platform::elevation_arguments(true, true)
+            .split_whitespace()
+            .map(str::to_owned)
+            .collect();
+        app.apply_restart_arguments(&compact);
+        assert!(app.compact);
+        assert!(app.connect_after_restart);
+        let expanded: Vec<_> = multilink_platform::elevation_arguments(false, false)
+            .split_whitespace()
+            .map(str::to_owned)
+            .collect();
+        app.apply_restart_arguments(&expanded);
+        assert!(!app.compact);
+        assert!(!app.connect_after_restart);
+        assert_eq!(app.page, Page::Settings);
+    }
+    #[test]
     fn activation_retries_reuse_saved_nonce_and_commit_only_on_success() {
         let mut app = App::new(None);
         let (commands, received) = mpsc::channel();
@@ -2610,6 +3007,41 @@ mod routing_workflow_tests {
         );
         assert!(!app.settings.nodes[0].enabled);
         assert!(app.modal.is_none());
+    }
+
+    #[test]
+    fn background_refresh_stages_new_nodes_without_interrupting_connection() {
+        let mut app = App::new(None);
+        let (sender, commands) = mpsc::channel();
+        app.tx = sender;
+        app.settings = Settings::default();
+        app.modal = None;
+        app.connected = true;
+        let url = "https://subscription.invalid/link";
+        let old = "vless://00000000-0000-4000-8000-000000000001@old.invalid:443#US-old";
+        let fresh = "vless://00000000-0000-4000-8000-000000000002@new.invalid:443#US-new";
+        let id = multilink_core::update_subscription(
+            &mut app.settings,
+            None,
+            url,
+            multilink_core::parse_subscription(old).unwrap(),
+        )
+        .unwrap();
+        app.refreshing_subscription = Some(id);
+        app.pending_subscription = Some((id, url.into(), Err("offline".into())));
+        app.poll_subscriptions();
+        assert_eq!(app.settings.nodes[0].name, "US-old");
+        assert!(app.subscription_errors.contains(&id));
+        assert!(commands.try_recv().is_err());
+        app.refreshing_subscription = Some(id);
+        app.pending_subscription =
+            Some((id, url.into(), multilink_core::import_subscription(fresh)));
+        app.poll_subscriptions();
+        assert_eq!(app.settings.nodes[0].name, "US-new");
+        assert!(app.connected && app.subscription_changes_pending);
+        assert!(!app.subscription_errors.contains(&id));
+        assert!(matches!(commands.try_recv(), Ok(Command::Save(_))));
+        assert!(commands.try_recv().is_err());
     }
     #[test]
     fn imported_routes_and_notes_survive_failed_apply_without_partial_changes() {

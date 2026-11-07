@@ -106,6 +106,8 @@ impl Policy {
 
 #[derive(Clone, Serialize, Deserialize)]
 pub struct Settings {
+    #[serde(default = "default_language")]
+    pub language: String,
     #[serde(default)]
     pub access: Option<ClientAccess>,
     #[serde(default)]
@@ -132,13 +134,19 @@ pub struct Settings {
 fn default_system_proxy() -> bool {
     true
 }
+fn default_language() -> String {
+    "system".into()
+}
 pub fn unavailable_route_targets(settings: &Settings) -> Vec<String> {
     let countries = available_countries(&settings.nodes);
     let mut missing = Vec::new();
     for rule in &settings.rules {
         if let Some(target) = rule.split(',').nth(2) {
             let available = matches!(target, "DIRECT" | "MULTILINK")
-                || settings.nodes.iter().any(|n| n.enabled && n.name == target)
+                || settings
+                    .nodes
+                    .iter()
+                    .any(|n| n.enabled && server_route_target(&n.name) == target)
                 || target
                     .strip_prefix("COUNTRY-")
                     .is_some_and(|code| countries.iter().any(|(id, _)| id == code));
@@ -149,9 +157,39 @@ pub fn unavailable_route_targets(settings: &Settings) -> Vec<String> {
     }
     missing
 }
+
+/// Distinguish country policies from server names and escape labels that
+/// cannot appear verbatim in a comma-delimited routing rule.
+pub fn server_route_target(name: &str) -> String {
+    if name.is_empty()
+        || name.len() > 128
+        || name.trim() != name
+        || name.starts_with("COUNTRY-")
+        || name.starts_with("SERVER:")
+        || matches!(name, "DIRECT" | "MULTILINK")
+        || name.chars().any(|c| c.is_control() || c == ',')
+    {
+        format!(
+            "SERVER:{}",
+            url::form_urlencoded::byte_serialize(name.as_bytes()).collect::<String>()
+        )
+    } else {
+        name.to_owned()
+    }
+}
+
+pub fn server_route_name(target: &str) -> Option<String> {
+    let encoded = target.strip_prefix("SERVER:")?;
+    let name = url::form_urlencoded::parse(format!("name={encoded}").as_bytes())
+        .next()?
+        .1
+        .into_owned();
+    (server_route_target(&name) == target).then_some(name)
+}
 impl Default for Settings {
     fn default() -> Self {
         Self {
+            language: default_language(),
             access: None,
             pending_activation: None,
             policy: Policy::default(),
@@ -685,6 +723,7 @@ pub fn direct_rule(input: &str) -> Result<String, String> {
 /// rules. Reject raw rule syntax and unknown targets before it reaches Mihomo.
 pub fn normalize_direct_rules(rules: &[String]) -> Result<Vec<String>, String> {
     let mut result = Vec::new();
+    let mut seen = HashSet::new();
     for rule in rules {
         let parts: Vec<_> = rule.split(',').collect();
         let target = parts.get(2).copied().unwrap_or_default();
@@ -692,12 +731,14 @@ pub fn normalize_direct_rules(rules: &[String]) -> Result<Vec<String>, String> {
             || (parts.len() == 4 && parts[3] == "no-resolve" && parts[0].starts_with("IP-CIDR")))
             || !(target == "DIRECT"
                 || target == "MULTILINK"
+                || (target.len() <= 8192 && server_route_name(target).is_some())
                 || target.strip_prefix("COUNTRY-").is_some_and(|code| {
                     code.len() == 2 && code.bytes().all(|byte| byte.is_ascii_uppercase())
                 })
                 || (target.len() <= 128
                     && !target.is_empty()
                     && !target.starts_with("COUNTRY-")
+                    && !target.starts_with("SERVER:")
                     && target.chars().all(|c| !c.is_control() && c != ',')))
             || ![
                 "DOMAIN-SUFFIX",
@@ -715,7 +756,7 @@ pub fn normalize_direct_rules(rules: &[String]) -> Result<Vec<String>, String> {
                 return Err("Неизвестный набор правил".into());
             }
             let canonical = format!("RULE-SET,RU-SITES,{target}");
-            if !result.contains(&canonical) {
+            if seen.insert(rule_key(&canonical)) {
                 result.push(canonical);
             }
             continue;
@@ -732,7 +773,7 @@ pub fn normalize_direct_rules(rules: &[String]) -> Result<Vec<String>, String> {
                 return Err("Укажите имя приложения в формате program.exe".into());
             }
             let canonical = format!("PROCESS-NAME,{},{}", process.to_ascii_lowercase(), target);
-            if !result.contains(&canonical) {
+            if seen.insert(rule_key(&canonical)) {
                 result.push(canonical);
             }
             continue;
@@ -742,7 +783,7 @@ pub fn normalize_direct_rules(rules: &[String]) -> Result<Vec<String>, String> {
         if canonical.split(',').next() != Some(parts[0]) {
             return Err("Тип исключения не соответствует адресу".into());
         }
-        if !result.contains(&canonical) {
+        if seen.insert(rule_key(&canonical)) {
             result.push(canonical);
         }
     }

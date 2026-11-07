@@ -91,7 +91,7 @@ pub fn routing_file_dialog(_: bool) -> io::Result<Option<PathBuf>> {
 }
 
 #[cfg(windows)]
-pub fn restart_elevated(connect_after_restart: bool) -> io::Result<()> {
+pub fn restart_elevated(connect_after_restart: bool, compact: bool) -> io::Result<()> {
     use std::os::windows::ffi::OsStrExt;
     use windows_sys::Win32::UI::{Shell::ShellExecuteW, WindowsAndMessaging::SW_SHOWNORMAL};
     let exe: Vec<u16> = std::env::current_exe()?
@@ -100,14 +100,10 @@ pub fn restart_elevated(connect_after_restart: bool) -> io::Result<()> {
         .chain(Some(0))
         .collect();
     let verb: Vec<u16> = "runas".encode_utf16().chain(Some(0)).collect();
-    let args: Vec<u16> = if connect_after_restart {
-        "--elevated-restart --connect-after-elevation"
-    } else {
-        "--elevated-restart"
-    }
-    .encode_utf16()
-    .chain(Some(0))
-    .collect();
+    let args: Vec<u16> = elevation_arguments(connect_after_restart, compact)
+        .encode_utf16()
+        .chain(Some(0))
+        .collect();
     let result = unsafe {
         ShellExecuteW(
             std::ptr::null_mut(),
@@ -125,8 +121,52 @@ pub fn restart_elevated(connect_after_restart: bool) -> io::Result<()> {
     }
 }
 #[cfg(not(windows))]
-pub fn restart_elevated(_: bool) -> io::Result<()> {
+pub fn restart_elevated(_: bool, _: bool) -> io::Result<()> {
     Err(io::Error::other("TUN доступен только в Windows"))
+}
+pub fn elevation_arguments(connect: bool, compact: bool) -> String {
+    format!(
+        "--elevated-restart{}{}",
+        if connect {
+            " --connect-after-elevation"
+        } else {
+            ""
+        },
+        if compact {
+            " --compact-after-elevation"
+        } else {
+            ""
+        }
+    )
+}
+pub fn system_locale() -> String {
+    #[cfg(windows)]
+    {
+        let mut buffer = [0u16; 85];
+        let ui_language = unsafe { windows_sys::Win32::Globalization::GetUserDefaultUILanguage() };
+        let mut len = unsafe {
+            windows_sys::Win32::Globalization::LCIDToLocaleName(
+                ui_language as u32,
+                buffer.as_mut_ptr(),
+                buffer.len() as i32,
+                0,
+            )
+        };
+        if len <= 1 {
+            len = unsafe {
+                windows_sys::Win32::Globalization::GetUserDefaultLocaleName(
+                    buffer.as_mut_ptr(),
+                    buffer.len() as i32,
+                )
+            };
+        }
+        if len > 1 {
+            return String::from_utf16_lossy(&buffer[..len as usize - 1]);
+        }
+    }
+    std::env::var("LC_ALL")
+        .or_else(|_| std::env::var("LANG"))
+        .unwrap_or_else(|_| "en".into())
 }
 
 #[cfg(windows)]

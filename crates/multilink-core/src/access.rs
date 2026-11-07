@@ -100,9 +100,8 @@ mod tests {
     #[test]
     fn install_is_atomic_and_expiration_excludes_only_exclusive_managed_nodes() {
         let mut settings = Settings::default();
-        let doc =
-            ProfileDocument::decode(include_str!("../fixtures/profile.example.everty.json"))
-                .unwrap();
+        let doc = ProfileDocument::decode(include_str!("../fixtures/profile.example.everty.json"))
+            .unwrap();
         let mut doc = doc;
         doc.expires_at = Some(unix_now() + 86400);
         let before = serde_json::to_string(&settings).unwrap();

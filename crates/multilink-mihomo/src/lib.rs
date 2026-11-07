@@ -1,4 +1,6 @@
 use multilink_core::{Policy, Settings};
+mod antigravity;
+pub use antigravity::*;
 mod access;
 pub use access::*;
 #[cfg(test)]
@@ -28,6 +30,33 @@ pub fn binary() -> PathBuf {
         })
 }
 
+fn runtime_proxy_names(
+    nodes: &[&multilink_core::Node],
+) -> std::collections::HashMap<String, String> {
+    let mut names: std::collections::HashSet<_> = nodes.iter().map(|n| n.name.clone()).collect();
+    nodes
+        .iter()
+        .enumerate()
+        .map(|(index, node)| {
+            let name = &node.name;
+            let runtime = if multilink_core::server_route_target(name) != *name
+                || matches!(
+                    name.as_str(),
+                    "GLOBAL" | "REJECT" | "REJECT-DROP" | "PASS" | "COMPATIBLE"
+                ) {
+                let mut alias = format!("EVERty-node-{index}");
+                while !names.insert(alias.clone()) {
+                    alias.push('-');
+                }
+                alias
+            } else {
+                name.clone()
+            };
+            (name.clone(), runtime)
+        })
+        .collect()
+}
+
 pub fn config(settings: &Settings, secret: &str) -> Result<String, String> {
     let mut effective = settings.clone();
     multilink_core::exclude_expired_access(&mut effective);
@@ -36,10 +65,11 @@ pub fn config(settings: &Settings, secret: &str) -> Result<String, String> {
     if nodes.is_empty() {
         return Err("Добавьте и включите хотя бы один сервер".into());
     }
+    let proxy_names = runtime_proxy_names(&nodes);
     let mut proxies = Vec::new();
     for node in &nodes {
         let mut p = serde_json::to_value(&node.proxy).map_err(|_| "Ошибка конфигурации узла")?;
-        p["name"] = json!(node.name);
+        p["name"] = json!(proxy_names[&node.name]);
         proxies.push(p);
     }
     // Keep Russian endpoints available for explicit COUNTRY-RU rules, but out
@@ -54,7 +84,7 @@ pub fn config(settings: &Settings, secret: &str) -> Result<String, String> {
     if settings.policy == Policy::Smart {
         default_nodes.sort_by_key(|node| std::cmp::Reverse(node.quality.score().unwrap_or(50)));
     }
-    let mut group = json!({"name":"MULTILINK", "type":"load-balance", "strategy":"round-robin", "proxies":default_nodes.iter().map(|n| &n.name).collect::<Vec<_>>(), "url":"https://www.gstatic.com/generate_204", "interval":60, "lazy":false});
+    let mut group = json!({"name":"MULTILINK", "type":"load-balance", "strategy":"round-robin", "proxies":default_nodes.iter().map(|n| &proxy_names[&n.name]).collect::<Vec<_>>(), "url":"https://www.gstatic.com/generate_204", "interval":60, "lazy":false});
     match settings.policy {
         Policy::Balance => {}
         Policy::Latency => {
@@ -87,28 +117,27 @@ pub fn config(settings: &Settings, secret: &str) -> Result<String, String> {
         })
     {
         let name = format!("COUNTRY-{code}");
-        if nodes.iter().any(|n| n.name == name) {
-            return Err("Имя сервера конфликтует с группой страны".into());
-        }
         let proxies: Vec<_> = nodes
             .iter()
             .filter(|n| multilink_core::node_country(&n.name).as_deref() == Some(code.as_str()))
-            .map(|n| &n.name)
+            .map(|n| &proxy_names[&n.name])
             .collect();
         groups.push(json!({"name":name,"type":"load-balance","strategy":"round-robin","proxies":proxies,"url":"https://www.gstatic.com/generate_204","interval":60,"lazy":false}));
     }
     for rule in &mut rules {
         if let Some(target) = rule.split(',').nth(2) {
-            if !matches!(target, "DIRECT" | "MULTILINK")
-                && !groups.iter().any(|g| g["name"] == target)
-                && !nodes.iter().any(|node| node.name == target)
+            let resolved = if matches!(target, "DIRECT" | "MULTILINK")
+                || groups.iter().any(|g| g["name"] == target)
             {
-                *rule = format!(
-                    "{},{},MULTILINK",
-                    rule.split(',').next().unwrap_or_default(),
-                    rule.split(',').nth(1).unwrap_or_default()
-                );
-            }
+                target
+            } else {
+                let node_name = multilink_core::server_route_name(target);
+                proxy_names
+                    .get(node_name.as_deref().unwrap_or(target))
+                    .map(String::as_str)
+                    .unwrap_or("MULTILINK")
+            };
+            *rule = format!("{},{resolved}", multilink_core::rule_key(rule));
         }
     }
     if settings.policy == Policy::Smart {
@@ -123,10 +152,10 @@ pub fn config(settings: &Settings, secret: &str) -> Result<String, String> {
             {
                 let domain = parts[1].to_owned();
                 let mut name = format!("MULTILINK-SITE-{count}");
-                while nodes.iter().any(|n| n.name == name) {
+                while proxy_names.values().any(|n| *n == name) {
                     name.push('-');
                 }
-                groups.push(json!({"name":name,"type":"url-test","proxies":default_nodes.iter().map(|n| &n.name).collect::<Vec<_>>(),"url":format!("https://{domain}/"),"interval":60,"timeout":4000,"tolerance":100,"max-failed-times":2,"expected-status":"200-399/401/404","lazy":true}));
+                groups.push(json!({"name":name,"type":"url-test","proxies":default_nodes.iter().map(|n| &proxy_names[&n.name]).collect::<Vec<_>>(),"url":format!("https://{domain}/"),"interval":60,"timeout":4000,"tolerance":100,"max-failed-times":2,"expected-status":"200-399/401/404","lazy":true}));
                 *rule = format!("DOMAIN-SUFFIX,{domain},{name}");
                 count += 1;
             }
@@ -139,8 +168,10 @@ pub fn config(settings: &Settings, secret: &str) -> Result<String, String> {
         "proxies":proxies, "proxy-groups":groups, "rules":rules,
         "profile":{"store-selected":false, "store-fake-ip":false},
     });
-    if settings.tun {
+    if settings.tun || rules.iter().any(|rule| rule.starts_with("PROCESS-NAME,")) {
         config["find-process-mode"] = json!("strict");
+    }
+    if settings.tun {
         config["tun"] = json!({
             "enable": true,
             "device": TUN_DEVICE,
@@ -387,10 +418,22 @@ impl Engine {
                 let ip = connection["metadata"]["destinationIP"]
                     .as_str()
                     .and_then(|s| s.parse().ok());
-                if changed
+                let process = ["process", "processPath"]
                     .iter()
-                    .any(|rule| multilink_core::exception_matches(rule, host, ip))
-                {
+                    .find_map(|field| {
+                        connection["metadata"][*field]
+                            .as_str()
+                            .filter(|s| !s.is_empty())
+                    })
+                    .and_then(|path| path.rsplit(['/', '\\']).next())
+                    .unwrap_or_default();
+                if changed.iter().any(|rule| {
+                    multilink_core::exception_matches(rule, host, ip)
+                        || rule
+                            .strip_prefix("PROCESS-NAME,")
+                            .and_then(|r| r.split(',').next())
+                            .is_some_and(|name| name.eq_ignore_ascii_case(process))
+                }) {
                     if let Some(id) = connection["id"].as_str() {
                         if self
                             .client
@@ -475,9 +518,18 @@ impl Engine {
     ) -> Result<Vec<(String, Option<u64>, multilink_core::NodeQuality)>, String> {
         let data = self.get("proxies")?;
         let proxies = data["proxies"].as_object().ok_or("Нет списка прокси")?;
+        let mut effective = self.settings.clone();
+        multilink_core::exclude_expired_access(&mut effective);
+        let names = runtime_proxy_names(
+            &effective
+                .nodes
+                .iter()
+                .filter(|n| n.enabled)
+                .collect::<Vec<_>>(),
+        );
         let mut values = Vec::new();
         for node in &mut self.settings.nodes {
-            if let Some(value) = proxies.get(&node.name) {
+            if let Some(value) = names.get(&node.name).and_then(|name| proxies.get(name)) {
                 let history = value["history"].as_array();
                 let latest = history.and_then(|h| h.last());
                 let delay = latest
@@ -992,4 +1044,45 @@ mod tests {
         assert_eq!(fetch("ozon.com", target.port, true), "GERMANY");
         engine.metrics().unwrap();
     }
+}
+#[test]
+fn server_and_country_with_same_name_are_distinct_routes() {
+    let mut settings = Settings::default();
+    settings.nodes = multilink_core::parse_subscription(
+        "vless://00000000-0000-4000-8000-000000000001@one.invalid:443#COUNTRY-US\n\
+             vless://00000000-0000-4000-8000-000000000002@two.invalid:443#US%2C%20New%20York",
+    )
+    .unwrap();
+    settings.rules = vec![
+        "DOMAIN-SUFFIX,group.example,COUNTRY-US".into(),
+        format!(
+            "PROCESS-NAME,antigravity.exe,{}",
+            multilink_core::server_route_target("COUNTRY-US")
+        ),
+        format!(
+            "DOMAIN-SUFFIX,other.example,{}",
+            multilink_core::server_route_target("US, New York")
+        ),
+    ];
+    assert!(multilink_core::unavailable_route_targets(&settings).is_empty());
+    let yaml: serde_yaml::Value =
+        serde_yaml::from_str(&config(&settings, "test").unwrap()).unwrap();
+    assert_eq!(yaml["proxy-groups"][1]["name"], "COUNTRY-US");
+    let nodes = yaml["proxies"].as_sequence().unwrap();
+    let (one, two) = (
+        nodes[0]["name"].as_str().unwrap(),
+        nodes[1]["name"].as_str().unwrap(),
+    );
+    assert_ne!(one, "COUNTRY-US");
+    assert_ne!(one, two);
+    let rules = yaml["rules"].as_sequence().unwrap();
+    assert!(rules.contains(&serde_yaml::Value::String(format!(
+        "PROCESS-NAME,antigravity.exe,{one}"
+    ))));
+    assert!(rules.contains(&serde_yaml::Value::String(format!(
+        "DOMAIN-SUFFIX,other.example,{two}"
+    ))));
+    assert!(rules.contains(&serde_yaml::Value::String(
+        "DOMAIN-SUFFIX,group.example,COUNTRY-US".into()
+    )));
 }
