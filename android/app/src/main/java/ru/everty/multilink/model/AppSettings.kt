@@ -25,6 +25,7 @@ class AppSettings(context: Context) {
         private const val KEY_SPLIT_RU = "split_ru_direct"
         private const val KEY_SUBSCRIPTION_URL = "last_subscription_url"
         private const val KEY_LAST_SUB_UPDATE = "last_sub_update_time"
+        private const val KEY_SUBSCRIPTIONS = "subscriptions_list"
         private const val KEY_AUTO_UPDATE_ON_START = "auto_update_on_start"
         private const val KEY_CUSTOM_RULES = "custom_routing_rules"
         private const val KEY_PER_APP_ENABLED = "per_app_vpn_enabled"
@@ -121,28 +122,84 @@ class AppSettings(context: Context) {
         saveNodes(updated)
     }
 
-    /**
-     * Smart sync of subscription nodes:
-     * - Updates changed names, ports, IPs, Reality keys
-     * - Adds new nodes
-     * - Removes obsolete nodes
-     * - Preserves user preferences (disabled state, pinned state)
-     */
-    fun syncSubscriptionNodes(newNodes: List<VpnNode>): SyncResult {
+    fun getSubscriptions(): List<Subscription> {
+        val json = prefs.getString(KEY_SUBSCRIPTIONS, null)
+        val list: MutableList<Subscription> = if (!json.isNullOrBlank()) {
+            val type = object : TypeToken<List<Subscription>>() {}.type
+            try {
+                gson.fromJson<List<Subscription>>(json, type)?.toMutableList() ?: mutableListOf()
+            } catch (e: Exception) {
+                mutableListOf()
+            }
+        } else {
+            mutableListOf()
+        }
+
+        if (list.isEmpty() && !lastSubscriptionUrl.isNullOrBlank()) {
+            val nodes = getNodes()
+            val initial = Subscription(
+                id = "sub_default",
+                name = "Подписка VLESS",
+                url = lastSubscriptionUrl!!,
+                updatedAt = lastSubscriptionUpdateTime,
+                nodesCount = nodes.size
+            )
+            list.add(initial)
+            saveSubscriptions(list)
+            val updatedNodes = nodes.map { it.copy(subscriptionId = it.subscriptionId ?: "sub_default") }
+            saveNodes(updatedNodes)
+        }
+
+        return list
+    }
+
+    fun saveSubscriptions(subscriptions: List<Subscription>) {
+        val json = gson.toJson(subscriptions)
+        prefs.edit().putString(KEY_SUBSCRIPTIONS, json).apply()
+    }
+
+    fun addOrUpdateSubscription(sub: Subscription) {
+        val subs = getSubscriptions().toMutableList()
+        val index = subs.indexOfFirst { it.id == sub.id || it.url == sub.url }
+        if (index >= 0) {
+            subs[index] = sub
+        } else {
+            subs.add(sub)
+        }
+        saveSubscriptions(subs)
+        lastSubscriptionUrl = sub.url
+    }
+
+    fun deleteSubscription(subId: String) {
+        val subs = getSubscriptions().filter { it.id != subId }
+        saveSubscriptions(subs)
+        val remainingNodes = getNodes().filter { it.subscriptionId != subId }
+        saveNodes(remainingNodes)
+        if (forcedNodeId != null && !remainingNodes.any { it.id == forcedNodeId }) {
+            forcedNodeId = null
+        }
+    }
+
+    fun syncSubscriptionNodes(newNodes: List<VpnNode>, subId: String? = null): SyncResult {
         val current = getNodes()
         var added = 0
         var updated = 0
 
-        val merged = mutableListOf<VpnNode>()
+        val targetSubId = subId ?: getSubscriptions().firstOrNull()?.id ?: "sub_default"
+        val taggedNewNodes = newNodes.map { it.copy(subscriptionId = targetSubId) }
+
+        val otherNodes = current.filter { it.subscriptionId != null && it.subscriptionId != targetSubId }
+        val thisSubCurrent = current.filter { it.subscriptionId == null || it.subscriptionId == targetSubId }
+
+        val mergedThisSub = mutableListOf<VpnNode>()
         val newSignatures = mutableSetOf<String>()
 
-        for (n in newNodes) {
+        for (n in taggedNewNodes) {
             val sig = "${n.server}:${n.port}:${n.uuid}"
             newSignatures.add(sig)
 
-            val existing = current.find { "${it.server}:${it.port}:${it.uuid}" == sig }
+            val existing = thisSubCurrent.find { "${it.server}:${it.port}:${it.uuid}" == sig }
             if (existing != null) {
-                // Update properties but keep user settings
                 val nodeUpdated = existing.copy(
                     name = n.name,
                     security = n.security,
@@ -152,30 +209,39 @@ class AppSettings(context: Context) {
                     flow = n.flow,
                     type = n.type,
                     path = n.path,
-                    rawUri = n.rawUri
+                    rawUri = n.rawUri,
+                    subscriptionId = targetSubId
                 )
                 if (existing.name != n.name || existing.sni != n.sni || existing.pbk != n.pbk) {
                     updated++
                 }
-                merged.add(nodeUpdated)
+                mergedThisSub.add(nodeUpdated)
             } else {
-                merged.add(n)
+                mergedThisSub.add(n)
                 added++
             }
         }
 
-        // Count removed nodes that came from subscription
-        val removed = current.count { "${it.server}:${it.port}:${it.uuid}" !in newSignatures }
+        val removed = thisSubCurrent.count { "${it.server}:${it.port}:${it.uuid}" !in newSignatures }
+        val allNodes = otherNodes + mergedThisSub
 
-        // If forced node was removed, reset pin
-        if (forcedNodeId != null && merged.none { it.id == forcedNodeId }) {
+        if (forcedNodeId != null && allNodes.none { it.id == forcedNodeId }) {
             forcedNodeId = null
         }
 
-        saveNodes(merged)
-        lastSubscriptionUpdateTime = System.currentTimeMillis()
+        saveNodes(allNodes)
 
-        return SyncResult(added = added, updated = updated, removed = removed, total = merged.size)
+        val subs = getSubscriptions().toMutableList()
+        val sIdx = subs.indexOfFirst { it.id == targetSubId }
+        val now = System.currentTimeMillis()
+        if (sIdx >= 0) {
+            subs[sIdx].updatedAt = now
+            subs[sIdx].nodesCount = mergedThisSub.size
+            saveSubscriptions(subs)
+        }
+        lastSubscriptionUpdateTime = now
+
+        return SyncResult(added = added, updated = updated, removed = removed.coerceAtLeast(0), total = allNodes.size)
     }
 
     fun addOrUpdateNodes(newNodes: List<VpnNode>) {

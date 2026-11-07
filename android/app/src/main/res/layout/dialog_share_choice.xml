@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:background="@color/bg_card"
+    android:orientation="vertical"
+    android:padding="20dp">
+
+    <TextView
+        android:id="@+id/tvShareChoiceTitle"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Поделиться конфигурацией"
+        android:textColor="@color/text_primary"
+        android:textSize="18sp"
+        android:textStyle="bold" />
+
+    <TextView
+        android:id="@+id/tvShareChoiceSubtitle"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="4dp"
+        android:text="Выберите, чем поделиться через QR-код"
+        android:textColor="@color/text_secondary"
+        android:textSize="13sp" />
+
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:layout_marginTop="16dp"
+        android:layout_marginBottom="16dp"
+        android:background="@color/border_card" />
+
+    <!-- Share entire subscription -->
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/btnShareSubscription"
+        android:layout_width="match_parent"
+        android:layout_height="52dp"
+        android:background="@drawable/btn_secondary_selector"
+        app:backgroundTint="@null"
+        android:focusable="true"
+        android:gravity="center"
+        android:text="🌐 Поделиться всей подпиской"
+        android:textColor="@color/accent_mint"
+        android:textSize="14sp"
+        android:textStyle="bold"
+        android:layout_marginBottom="10dp" />
+
+    <!-- Share single server -->
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/btnShareSingleServer"
+        android:layout_width="match_parent"
+        android:layout_height="52dp"
+        android:background="@drawable/btn_secondary_selector"
+        app:backgroundTint="@null"
+        android:focusable="true"
+        android:gravity="center"
+        android:text="🖥️ Поделиться отдельным сервером"
+        android:textColor="@color/text_primary"
+        android:textSize="14sp"
+        android:layout_marginBottom="10dp" />
+
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/btnCancelShareChoice"
+        android:layout_width="match_parent"
+        android:layout_height="46dp"
+        android:background="@drawable/btn_secondary_selector"
+        app:backgroundTint="@null"
+        android:focusable="true"
+        android:text="Отмена"
+        android:textColor="@color/text_muted" />
+
+</LinearLayout>

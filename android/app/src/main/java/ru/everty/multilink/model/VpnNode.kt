@@ -17,7 +17,8 @@ data class VpnNode(
     var pingMs: Long = -1,
     var isEnabled: Boolean = true,
     var isSelected: Boolean = false,
-    val rawUri: String = ""
+    val rawUri: String = "",
+    var subscriptionId: String? = null
 ) {
     fun getDisplayDetails(): String {
         return "${security.uppercase()} • ${type.uppercase()} • $server:$port"
@@ -33,8 +34,8 @@ enum class Policy(val label: String) {
 
 data class Subscription(
     val id: String,
-    val name: String,
-    val url: String,
-    val updatedAt: Long,
-    val nodesCount: Int
+    var name: String,
+    var url: String,
+    var updatedAt: Long = 0L,
+    var nodesCount: Int = 0
 )

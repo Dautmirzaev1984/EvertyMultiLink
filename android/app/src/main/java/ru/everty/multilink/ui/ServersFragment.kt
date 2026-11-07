@@ -15,15 +15,13 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import com.google.android.material.button.MaterialButton
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import ru.everty.multilink.R
-import ru.everty.multilink.parser.ConfigParser
 import ru.everty.multilink.databinding.FragmentServersBinding
 import ru.everty.multilink.model.AppSettings
+import ru.everty.multilink.model.Subscription
 import ru.everty.multilink.model.VpnNode
+import ru.everty.multilink.parser.ConfigParser
 import java.net.InetSocketAddress
 import java.net.Socket
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
 
 class ServersFragment : Fragment() {
 
@@ -31,6 +29,7 @@ class ServersFragment : Fragment() {
     private val binding get() = _binding!!
 
     private lateinit var settings: AppSettings
+    private lateinit var subsAdapter: SubscriptionsAdapter
     private lateinit var adapter: NodesAdapter
 
     override fun onCreateView(
@@ -51,6 +50,21 @@ class ServersFragment : Fragment() {
     }
 
     private fun setupRecyclerView() {
+        subsAdapter = SubscriptionsAdapter(
+            subscriptions = emptyList(),
+            onSubscriptionClick = { sub ->
+                showEditSubscriptionDialog(sub)
+            },
+            onSubscriptionLongClick = { sub ->
+                showEditSubscriptionDialog(sub)
+            },
+            onRefreshClick = { sub ->
+                (activity as? MainActivity)?.fetchSubscription(sub.url, subId = sub.id, subName = sub.name, isManual = true)
+            }
+        )
+        binding.rvSubscriptions.layoutManager = LinearLayoutManager(requireContext())
+        binding.rvSubscriptions.adapter = subsAdapter
+
         adapter = NodesAdapter(
             nodes = emptyList(),
             forcedNodeId = settings.forcedNodeId,
@@ -76,16 +90,11 @@ class ServersFragment : Fragment() {
     }
 
     private fun setupListeners() {
-        binding.btnUpdateSub.setOnClickListener {
-            val url = settings.lastSubscriptionUrl
-            if (!url.isNullOrBlank()) {
-                (activity as? MainActivity)?.fetchSubscription(url, isManual = true)
-            } else {
-                showAddSubscriptionDialog()
-            }
+        binding.btnUpdateAllSubs.setOnClickListener {
+            (activity as? MainActivity)?.fetchAllSubscriptions()
         }
 
-        binding.btnAddSub.setOnClickListener {
+        binding.btnAddSubscription.setOnClickListener {
             showAddSubscriptionDialog()
         }
     }
@@ -93,20 +102,13 @@ class ServersFragment : Fragment() {
     fun refreshList() {
         if (_binding == null) return
 
+        val subs = settings.getSubscriptions()
+        binding.tvSubscriptionsHeader.text = "Подписки (${subs.size})"
+        subsAdapter.updateData(subs)
+
         val nodes = settings.getNodes()
         val enabledCount = nodes.count { it.isEnabled }
-        binding.tvSubscriptionCount.text = "$enabledCount / ${nodes.size} узлов"
-        binding.tvSubscriptionUrl.text = settings.lastSubscriptionUrl ?: "Подписка добавлена вручную"
-
-        val lastUpdate = settings.lastSubscriptionUpdateTime
-        if (lastUpdate > 0) {
-            val sdf = SimpleDateFormat("dd.MM HH:mm:ss", Locale.getDefault())
-            binding.tvSubscriptionUpdated.text = "Синхронизировано: ${sdf.format(Date(lastUpdate))}"
-        } else {
-            binding.tvSubscriptionUpdated.text = "Синхронизация не выполнялась"
-        }
-
-        binding.tvNodesHeader.text = "Узлы для Multi-Link (${nodes.size})"
+        binding.tvNodesHeader.text = "Узлы для Multi-Link ($enabledCount / ${nodes.size})"
         adapter.updateNodes(nodes, settings.forcedNodeId)
 
         // Run latency pings in background
@@ -145,36 +147,123 @@ class ServersFragment : Fragment() {
     }
 
     private fun showAddSubscriptionDialog() {
-        val input = EditText(requireContext()).apply {
-            hint = "https://... или vless://..."
-            setTextColor(ContextCompat.getColor(context, R.color.text_primary))
-            setHintTextColor(ContextCompat.getColor(context, R.color.text_muted))
-            background = ContextCompat.getDrawable(context, R.drawable.card_background)
-            setPadding(30, 30, 30, 30)
+        val dialogView = LayoutInflater.from(requireContext()).inflate(R.layout.dialog_add_config, null)
+        val etInput = dialogView.findViewById<EditText>(R.id.etConfigInput)
+        val btnPaste = dialogView.findViewById<MaterialButton>(R.id.btnPasteClipboard)
+        val btnScan = dialogView.findViewById<MaterialButton>(R.id.btnScanFromDialog)
+        val btnSave = dialogView.findViewById<MaterialButton>(R.id.btnSaveConfig)
+
+        val dialog = MaterialAlertDialogBuilder(requireContext())
+            .setView(dialogView)
+            .create()
+
+        btnPaste.setOnClickListener {
+            val clipboard = requireContext().getSystemService(android.content.Context.CLIPBOARD_SERVICE) as? android.content.ClipboardManager
+            val item = clipboard?.primaryClip?.getItemAt(0)
+            val text = item?.text?.toString() ?: ""
+            if (text.isNotEmpty()) {
+                etInput.setText(text)
+            }
         }
 
-        MaterialAlertDialogBuilder(requireContext())
-            .setTitle("Добавить подписку или узел")
-            .setMessage("Вставьте URL подписки VLESS или ссылку vless://:")
-            .setView(input)
-            .setPositiveButton("Импортировать") { _, _ ->
-                val text = input.text.toString().trim()
-                if (text.startsWith("http://") || text.startsWith("https://")) {
-                    (activity as? MainActivity)?.fetchSubscription(text, isManual = true)
-                } else if (text.startsWith("vless://")) {
-                    val nodes = ConfigParser.parse(text)
-                    if (nodes.isNotEmpty()) {
-                        settings.syncSubscriptionNodes(nodes)
-                        refreshList()
-                        (activity as? MainActivity)?.notifyNodesChanged()
-                        Toast.makeText(requireContext(), "Добавлено ${nodes.size} узлов", Toast.LENGTH_SHORT).show()
-                    } else {
-                        Toast.makeText(requireContext(), "Неверный формат VLESS", Toast.LENGTH_SHORT).show()
-                    }
-                }
+        btnScan.setOnClickListener {
+            dialog.dismiss()
+            (activity as? MainActivity)?.startQrScan()
+        }
+
+        btnSave.setOnClickListener {
+            val text = etInput.text.toString().trim()
+            if (text.isEmpty()) {
+                Toast.makeText(requireContext(), "Введите ссылку", Toast.LENGTH_SHORT).show()
+                return@setOnClickListener
             }
-            .setNegativeButton("Отмена", null)
-            .show()
+
+            if (text.startsWith("http://") || text.startsWith("https://")) {
+                dialog.dismiss()
+                (activity as? MainActivity)?.fetchSubscription(text, isManual = true)
+            } else if (text.contains("vless://")) {
+                val nodes = ConfigParser.parse(text)
+                if (nodes.isNotEmpty()) {
+                    settings.syncSubscriptionNodes(nodes)
+                    dialog.dismiss()
+                    refreshList()
+                    (activity as? MainActivity)?.notifyNodesChanged()
+                    Toast.makeText(requireContext(), "Добавлено ${nodes.size} узлов", Toast.LENGTH_SHORT).show()
+                } else {
+                    Toast.makeText(requireContext(), "Неверный формат VLESS", Toast.LENGTH_SHORT).show()
+                }
+            } else {
+                Toast.makeText(requireContext(), "Неподдерживаемый формат ссылки", Toast.LENGTH_SHORT).show()
+            }
+        }
+
+        dialog.show()
+    }
+
+    private fun showEditSubscriptionDialog(sub: Subscription) {
+        val dialogView = LayoutInflater.from(requireContext()).inflate(R.layout.dialog_edit_subscription, null)
+        val etName = dialogView.findViewById<EditText>(R.id.etEditSubName)
+        val etUrl = dialogView.findViewById<EditText>(R.id.etEditSubUrl)
+        val btnRefresh = dialogView.findViewById<MaterialButton>(R.id.btnEditSubRefresh)
+        val btnShare = dialogView.findViewById<MaterialButton>(R.id.btnEditSubShare)
+        val btnSave = dialogView.findViewById<MaterialButton>(R.id.btnEditSubSave)
+        val btnDelete = dialogView.findViewById<MaterialButton>(R.id.btnEditSubDelete)
+        val btnCancel = dialogView.findViewById<MaterialButton>(R.id.btnEditSubCancel)
+
+        etName.setText(sub.name)
+        etUrl.setText(sub.url)
+
+        val dialog = MaterialAlertDialogBuilder(requireContext())
+            .setView(dialogView)
+            .create()
+
+        btnRefresh.setOnClickListener {
+            dialog.dismiss()
+            (activity as? MainActivity)?.fetchSubscription(sub.url, subId = sub.id, subName = sub.name, isManual = true)
+        }
+
+        btnShare.setOnClickListener {
+            dialog.dismiss()
+            (activity as? MainActivity)?.let { act ->
+                act.showSingleSubscriptionQr(sub)
+            }
+        }
+
+        btnSave.setOnClickListener {
+            val newName = etName.text.toString().trim()
+            val newUrl = etUrl.text.toString().trim()
+            if (newUrl.isEmpty()) {
+                Toast.makeText(requireContext(), "URL не может быть пустым", Toast.LENGTH_SHORT).show()
+                return@setOnClickListener
+            }
+            sub.name = if (newName.isNotEmpty()) newName else sub.name
+            sub.url = newUrl
+            settings.addOrUpdateSubscription(sub)
+            dialog.dismiss()
+            refreshList()
+            Toast.makeText(requireContext(), "Подписка обновлена", Toast.LENGTH_SHORT).show()
+        }
+
+        btnDelete.setOnClickListener {
+            MaterialAlertDialogBuilder(requireContext())
+                .setTitle("Удалить подписку?")
+                .setMessage("Будут удалены все ${sub.nodesCount} серверов подписки \"${sub.name}\".")
+                .setPositiveButton("Удалить") { _, _ ->
+                    settings.deleteSubscription(sub.id)
+                    dialog.dismiss()
+                    refreshList()
+                    (activity as? MainActivity)?.notifyNodesChanged()
+                    Toast.makeText(requireContext(), "Подписка \"${sub.name}\" удалена", Toast.LENGTH_SHORT).show()
+                }
+                .setNegativeButton("Отмена", null)
+                .show()
+        }
+
+        btnCancel.setOnClickListener {
+            dialog.dismiss()
+        }
+
+        dialog.show()
     }
 
     private fun showNodeActionDialog(node: VpnNode) {
@@ -212,39 +301,29 @@ class ServersFragment : Fragment() {
             .create()
 
         btnPin.setOnClickListener {
-            dialog.dismiss()
             if (isPinned) {
                 settings.forcedNodeId = null
-                Toast.makeText(requireContext(), "Фиксация снята: Multi-Link активен", Toast.LENGTH_SHORT).show()
+                Toast.makeText(requireContext(), "Фиксация снята: активен Multi-Link", Toast.LENGTH_SHORT).show()
             } else {
                 settings.forcedNodeId = node.id
                 settings.selectNode(node.id)
                 Toast.makeText(requireContext(), "Сервер зафиксирован: ${node.name}", Toast.LENGTH_SHORT).show()
             }
+            dialog.dismiss()
             refreshList()
             (activity as? MainActivity)?.notifyNodesChanged()
         }
 
         btnToggle.setOnClickListener {
-            val list = settings.getNodes().toMutableList()
-            val idx = list.indexOfFirst { it.id == node.id }
-            if (idx >= 0) {
-                list[idx] = list[idx].copy(isEnabled = !node.isEnabled)
-                if (list[idx].isSelected && !list[idx].isEnabled) {
-                    list[idx] = list[idx].copy(isSelected = false)
-                    val next = list.firstOrNull { it.isEnabled }
-                    if (next != null) {
-                        val nextIdx = list.indexOfFirst { it.id == next.id }
-                        list[nextIdx] = list[nextIdx].copy(isSelected = true)
-                        settings.selectedNodeId = next.id
-                    }
-                }
-                if (settings.forcedNodeId == node.id && !list[idx].isEnabled) {
-                    settings.forcedNodeId = null
-                }
-                settings.saveNodes(list)
+            val all = settings.getNodes()
+            val target = all.find { it.id == node.id }
+            if (target != null) {
+                target.isEnabled = !target.isEnabled
+                settings.saveNodes(all)
                 refreshList()
                 (activity as? MainActivity)?.notifyNodesChanged()
+                val statusText = if (target.isEnabled) "активирован" else "отключен"
+                Toast.makeText(requireContext(), "Узел $statusText", Toast.LENGTH_SHORT).show()
             }
             dialog.dismiss()
         }
@@ -255,23 +334,20 @@ class ServersFragment : Fragment() {
         }
 
         btnDelete.setOnClickListener {
-            dialog.dismiss()
             MaterialAlertDialogBuilder(requireContext())
                 .setTitle("Удалить сервер?")
-                .setMessage("Вы действительно хотите удалить ${node.name}?")
+                .setMessage("Вы уверены, что хотите удалить \"${node.name}\"?")
                 .setPositiveButton("Удалить") { _, _ ->
-                    val list = settings.getNodes().toMutableList()
-                    list.removeAll { it.id == node.id }
+                    val all = settings.getNodes().toMutableList()
+                    all.removeAll { it.id == node.id }
+                    settings.saveNodes(all)
                     if (settings.forcedNodeId == node.id) {
                         settings.forcedNodeId = null
                     }
-                    if (list.none { it.isSelected } && list.isNotEmpty()) {
-                        list[0] = list[0].copy(isSelected = true)
-                        settings.selectedNodeId = list[0].id
-                    }
-                    settings.saveNodes(list)
+                    dialog.dismiss()
                     refreshList()
                     (activity as? MainActivity)?.notifyNodesChanged()
+                    Toast.makeText(requireContext(), "Сервер удален", Toast.LENGTH_SHORT).show()
                 }
                 .setNegativeButton("Отмена", null)
                 .show()
@@ -282,11 +358,6 @@ class ServersFragment : Fragment() {
         }
 
         dialog.show()
-    }
-
-    override fun onResume() {
-        super.onResume()
-        refreshList()
     }
 
     override fun onDestroyView() {

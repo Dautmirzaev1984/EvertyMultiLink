@@ -3,6 +3,8 @@ package ru.everty.multilink.ui
 import android.app.Activity
 import android.app.UiModeManager
 import android.content.BroadcastReceiver
+import android.content.ClipData
+import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
@@ -27,6 +29,7 @@ import com.journeyapps.barcodescanner.ScanOptions
 import ru.everty.multilink.R
 import ru.everty.multilink.databinding.ActivityMainBinding
 import ru.everty.multilink.model.AppSettings
+import ru.everty.multilink.model.Subscription
 import ru.everty.multilink.model.VpnNode
 import ru.everty.multilink.parser.ConfigParser
 import ru.everty.multilink.qr.QrUtils
@@ -121,7 +124,13 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun checkSubscriptionOnStart() {
-        if (settings.isAutoUpdateOnStartEnabled) {
+        if (!settings.isAutoUpdateOnStartEnabled) return
+        val subs = settings.getSubscriptions()
+        if (subs.isNotEmpty()) {
+            for (sub in subs) {
+                fetchSubscription(sub.url, subId = sub.id, subName = sub.name, isManual = false)
+            }
+        } else {
             val subUrl = settings.lastSubscriptionUrl
             if (!subUrl.isNullOrEmpty()) {
                 fetchSubscription(subUrl, isManual = false)
@@ -215,29 +224,154 @@ class MainActivity : AppCompatActivity() {
         dialog.show()
     }
 
-    fun showShareQrDialog(customNode: VpnNode? = null) {
-        val nodeToShare = customNode ?: settings.getSelectedNode()
-        val shareContent = nodeToShare?.rawUri?.takeIf { it.isNotEmpty() }
-            ?: (if (customNode == null) settings.lastSubscriptionUrl else null)
-            ?: "vless://${nodeToShare?.uuid}@${nodeToShare?.server}:${nodeToShare?.port}?security=${nodeToShare?.security}&sni=${nodeToShare?.sni}#${nodeToShare?.name}"
+    fun showSingleSubscriptionQr(sub: Subscription) {
+        displayQrCode(
+            title = "Поделиться подпиской",
+            subtitle = "${sub.name} (${sub.nodesCount} серверов)",
+            content = sub.url
+        )
+    }
 
+    fun showShareQrDialog(customNode: VpnNode? = null) {
+        if (customNode != null) {
+            val content = customNode.rawUri?.takeIf { it.isNotEmpty() }
+                ?: "vless://${customNode.uuid}@${customNode.server}:${customNode.port}?security=${customNode.security}&sni=${customNode.sni}#${customNode.name}"
+            displayQrCode(
+                title = "Поделиться сервером",
+                subtitle = customNode.name,
+                content = content
+            )
+            return
+        }
+
+        val subs = settings.getSubscriptions()
+        val nodes = settings.getNodes()
+
+        if (subs.isNotEmpty() && nodes.isNotEmpty()) {
+            showShareChoiceDialog(subs, nodes)
+        } else if (subs.isNotEmpty()) {
+            val s = subs.first()
+            displayQrCode(
+                title = "Поделиться подпиской",
+                subtitle = "${s.name} (${s.nodesCount} серверов)",
+                content = s.url
+            )
+        } else if (nodes.size == 1) {
+            val node = nodes.first()
+            val content = node.rawUri?.takeIf { it.isNotEmpty() }
+                ?: "vless://${node.uuid}@${node.server}:${node.port}?security=${node.security}&sni=${node.sni}#${node.name}"
+            displayQrCode(
+                title = "Поделиться сервером",
+                subtitle = node.name,
+                content = content
+            )
+        } else if (nodes.size > 1) {
+            showSingleServerSelectDialog(nodes)
+        } else {
+            Toast.makeText(this, "Нет доступных серверов или подписок для экспорта", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    private fun showShareChoiceDialog(subs: List<Subscription>, nodes: List<VpnNode>) {
+        val dialogView = LayoutInflater.from(this).inflate(R.layout.dialog_share_choice, null)
+        val btnSub = dialogView.findViewById<MaterialButton>(R.id.btnShareSubscription)
+        val btnServer = dialogView.findViewById<MaterialButton>(R.id.btnShareSingleServer)
+        val btnCancel = dialogView.findViewById<MaterialButton>(R.id.btnCancelShareChoice)
+
+        if (subs.size == 1) {
+            btnSub.text = "🌐 Поделиться подпиской (${subs.first().nodesCount} узлов)"
+        } else {
+            btnSub.text = "🌐 Поделиться подпиской (${subs.size} подписок)"
+        }
+
+        val dialog = MaterialAlertDialogBuilder(this)
+            .setView(dialogView)
+            .setCancelable(true)
+            .create()
+
+        btnSub.setOnClickListener {
+            dialog.dismiss()
+            if (subs.size == 1) {
+                val s = subs.first()
+                displayQrCode(
+                    title = "Поделиться подпиской",
+                    subtitle = "${s.name} (${s.nodesCount} серверов)",
+                    content = s.url
+                )
+            } else {
+                val names = subs.map { "${it.name} (${it.nodesCount} серверов)" }.toTypedArray()
+                MaterialAlertDialogBuilder(this)
+                    .setTitle("Выберите подписку для QR")
+                    .setItems(names) { _, which ->
+                        val s = subs[which]
+                        displayQrCode(
+                            title = "Поделиться подпиской",
+                            subtitle = "${s.name} (${s.nodesCount} серверов)",
+                            content = s.url
+                        )
+                    }
+                    .setNegativeButton("Отмена", null)
+                    .show()
+            }
+        }
+
+        btnServer.setOnClickListener {
+            dialog.dismiss()
+            showSingleServerSelectDialog(nodes)
+        }
+
+        btnCancel.setOnClickListener {
+            dialog.dismiss()
+        }
+
+        dialog.show()
+    }
+
+    private fun showSingleServerSelectDialog(nodes: List<VpnNode>) {
+        val names = nodes.map { it.name }.toTypedArray()
+        MaterialAlertDialogBuilder(this)
+            .setTitle("Выберите сервер для QR-кода")
+            .setItems(names) { _, which ->
+                val node = nodes[which]
+                val content = node.rawUri?.takeIf { it.isNotEmpty() }
+                    ?: "vless://${node.uuid}@${node.server}:${node.port}?security=${node.security}&sni=${node.sni}#${node.name}"
+                displayQrCode(
+                    title = "Поделиться сервером",
+                    subtitle = node.name,
+                    content = content
+                )
+            }
+            .setNegativeButton("Отмена", null)
+            .show()
+    }
+
+    private fun displayQrCode(title: String, subtitle: String, content: String) {
         val dialogView = LayoutInflater.from(this).inflate(R.layout.dialog_qr_display, null)
         val ivShareQr = dialogView.findViewById<ImageView>(R.id.ivShareQr)
         val tvQrTitle = dialogView.findViewById<TextView>(R.id.tvQrTitle)
+        val tvQrSubtitle = dialogView.findViewById<TextView>(R.id.tvQrSubtitle)
         val tvQrDetails = dialogView.findViewById<TextView>(R.id.tvQrDetails)
+        val btnCopy = dialogView.findViewById<MaterialButton>(R.id.btnQrCopy)
         val btnClose = dialogView.findViewById<MaterialButton>(R.id.btnQrClose)
 
-        if (customNode != null) {
-            tvQrTitle.text = "Поделиться узлом: ${customNode.name}"
-        }
-        tvQrDetails.text = shareContent
-        val qrBitmap = QrUtils.generateQrBitmap(shareContent, 500)
+        tvQrTitle.text = title
+        tvQrSubtitle.text = subtitle
+        tvQrDetails.text = content
+
+        val qrBitmap = QrUtils.generateQrBitmap(content, 500)
         ivShareQr.setImageBitmap(qrBitmap)
 
         val dialog = MaterialAlertDialogBuilder(this)
             .setView(dialogView)
             .setCancelable(true)
             .create()
+
+        btnCopy.setOnClickListener {
+            val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+            val clip = ClipData.newPlainText("Everty Link", content)
+            clipboard.setPrimaryClip(clip)
+            Toast.makeText(this, "Ссылка скопирована в буфер", Toast.LENGTH_SHORT).show()
+        }
 
         btnClose.setOnClickListener {
             dialog.dismiss()
@@ -246,7 +380,7 @@ class MainActivity : AppCompatActivity() {
         dialog.show()
     }
 
-    fun fetchSubscription(url: String, isManual: Boolean = true) {
+    fun fetchSubscription(url: String, subId: String? = null, subName: String? = null, isManual: Boolean = true) {
         if (isManual) {
             Toast.makeText(this, "Синхронизация подписки…", Toast.LENGTH_SHORT).show()
         }
@@ -265,9 +399,25 @@ class MainActivity : AppCompatActivity() {
                     val nodes = ConfigParser.parse(body)
                     mainHandler.post {
                         if (nodes.isNotEmpty()) {
-                            val res = settings.syncSubscriptionNodes(nodes)
+                            val currentSubs = settings.getSubscriptions()
+                            val targetId = subId ?: currentSubs.find { it.url == url }?.id ?: java.util.UUID.randomUUID().toString()
+                            val targetName = subName
+                                ?: currentSubs.find { it.id == targetId }?.name
+                                ?: try { java.net.URI(cleanUrl).host ?: "Подписка" } catch (_: Exception) { "Подписка" }
+
+                            settings.addOrUpdateSubscription(
+                                Subscription(
+                                    id = targetId,
+                                    name = targetName,
+                                    url = url,
+                                    updatedAt = System.currentTimeMillis(),
+                                    nodesCount = nodes.size
+                                )
+                            )
+
+                            val res = settings.syncSubscriptionNodes(nodes, subId = targetId)
                             notifyNodesChanged()
-                            val msg = "Подписка обновлена: +${res.added} новых, ${res.updated} обновлено, ${res.total} узлов"
+                            val msg = "Подписка \"$targetName\" обновлена: +${res.added}, всего ${res.total} узлов"
                             Toast.makeText(this, msg, Toast.LENGTH_LONG).show()
                         } else if (isManual) {
                             Toast.makeText(this, "В подписке не найдено узлов", Toast.LENGTH_SHORT).show()
@@ -282,6 +432,23 @@ class MainActivity : AppCompatActivity() {
                 }
             }
         }.start()
+    }
+
+    fun fetchAllSubscriptions() {
+        val subs = settings.getSubscriptions()
+        if (subs.isEmpty()) {
+            val legacyUrl = settings.lastSubscriptionUrl
+            if (!legacyUrl.isNullOrEmpty()) {
+                fetchSubscription(legacyUrl, isManual = true)
+            } else {
+                Toast.makeText(this, "Нет добавленных подписок", Toast.LENGTH_SHORT).show()
+            }
+            return
+        }
+        Toast.makeText(this, "Обновление ${subs.size} подписок…", Toast.LENGTH_SHORT).show()
+        for (sub in subs) {
+            fetchSubscription(sub.url, subId = sub.id, subName = sub.name, isManual = false)
+        }
     }
 
     fun notifyNodesChanged() {
