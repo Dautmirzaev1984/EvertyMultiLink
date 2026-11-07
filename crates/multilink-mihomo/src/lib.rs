@@ -3,6 +3,8 @@ mod antigravity;
 pub use antigravity::*;
 mod access;
 pub use access::*;
+pub mod zero_shadow;
+pub use zero_shadow::*;
 #[cfg(test)]
 mod smart_tests;
 use reqwest::blocking::Client;
@@ -98,7 +100,7 @@ pub fn config(settings: &Settings, secret: &str) -> Result<String, String> {
         }
         Policy::Smart => {
             group["type"] = json!("url-test");
-            group["tolerance"] = json!(100);
+            group["tolerance"] = json!(settings.smart_tolerance.max(10));
             group["interval"] = json!(30);
             group["max-failed-times"] = json!(2);
             group["timeout"] = json!(4000);
@@ -155,7 +157,7 @@ pub fn config(settings: &Settings, secret: &str) -> Result<String, String> {
                 while proxy_names.values().any(|n| *n == name) {
                     name.push('-');
                 }
-                groups.push(json!({"name":name,"type":"url-test","proxies":default_nodes.iter().map(|n| &proxy_names[&n.name]).collect::<Vec<_>>(),"url":format!("https://{domain}/"),"interval":60,"timeout":4000,"tolerance":100,"max-failed-times":2,"expected-status":"200-399/401/404","lazy":true}));
+                groups.push(json!({"name":name,"type":"url-test","proxies":default_nodes.iter().map(|n| &proxy_names[&n.name]).collect::<Vec<_>>(),"url":format!("https://{domain}/"),"interval":60,"timeout":4000,"tolerance":settings.smart_tolerance.max(10),"max-failed-times":2,"expected-status":"200-399/401/404","lazy":true}));
                 *rule = format!("DOMAIN-SUFFIX,{domain},{name}");
                 count += 1;
             }

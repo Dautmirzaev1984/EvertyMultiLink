@@ -130,6 +130,11 @@ pub struct Settings {
     pub subscriptions: Vec<Subscription>,
     #[serde(default)]
     pub ru_defaults_initialized: bool,
+    #[serde(default = "default_smart_tolerance")]
+    pub smart_tolerance: u32,
+}
+fn default_smart_tolerance() -> u32 {
+    100
 }
 fn default_system_proxy() -> bool {
     true
@@ -202,6 +207,7 @@ impl Default for Settings {
             rank_servers: false,
             subscriptions: Vec::new(),
             ru_defaults_initialized: false,
+            smart_tolerance: default_smart_tolerance(),
         }
     }
 }
