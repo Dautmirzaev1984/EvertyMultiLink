@@ -239,7 +239,9 @@ impl Canvas<'_> {
             | Action::Language
             | Action::SelectLanguage(_)
             | Action::HelpSection(_) => true,
-            Action::OpenAboutSite | Action::OpenGitHub => true,
+            Action::OpenAboutSite | Action::OpenGitHub | Action::OpenDonate => true,
+            Action::ShareNode(_) | Action::ShareSubscription(_) => true,
+            Action::OpenLanSync | Action::CopyQrContent => !self.busy,
             Action::RankServers => true,
             Action::Compact | Action::Expanded | Action::ToggleAutostart => true,
             Action::Connect | Action::Close | Action::Paste | Action::Submit => !self.busy,
