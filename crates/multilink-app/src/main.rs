@@ -3,6 +3,7 @@
 mod help;
 mod i18n;
 mod icons;
+mod lan_sync;
 mod scrolling;
 mod ui;
 #[cfg(windows)]
@@ -424,12 +425,17 @@ enum Action {
     TargetPage(usize),
     OpenAboutSite,
     OpenGitHub,
+    OpenDonate,
+    CopyQrContent,
+    ShareNode(usize),
+    ShareSubscription(u64),
+    OpenLanSync,
     RefreshSubscription(u64),
     EditSubscriptionUrl(u64),
     RenameSubscription(u64),
     DeleteSubscription(u64),
 }
-#[derive(Clone, Copy, PartialEq)]
+#[derive(Clone, PartialEq)]
 enum Modal {
     Language,
     AccessCode,
@@ -443,6 +449,15 @@ enum Modal {
     SubscriptionName,
     SubscriptionDelete,
     ClearLibrary,
+    ShareQr {
+        title: String,
+        content: String,
+        caption: String,
+    },
+    LanSync {
+        url: String,
+        pin: String,
+    },
 }
 
 struct App {
@@ -508,6 +523,8 @@ struct App {
     antigravity_template: bool,
     imported_routing: Option<multilink_core::RoutingConfig>,
     selecting_target: bool,
+    lan_sync_session: Option<lan_sync::LanSyncSession>,
+    lan_sync_rx: Option<mpsc::Receiver<String>>,
     target_page: usize,
     scroll_bar: Option<scrolling::ScrollBar>,
     scroll_drag: Option<f64>,
@@ -558,6 +575,21 @@ impl App {
             let _ = updates.send(Update::SubscriptionFetched(ticket, id, url, result));
         });
         self.redraw();
+    }
+
+    fn poll_lan_sync(&mut self) {
+        if let Some(rx) = &self.lan_sync_rx {
+            if let Ok(payload) = rx.try_recv() {
+                if let Some(session) = self.lan_sync_session.take() {
+                    session.stop();
+                }
+                self.lan_sync_rx = None;
+                self.modal = None;
+                let _ = self.tx.send(Command::Import(payload, None));
+                self.notify("Получена конфигурация по сети. Выполняется импорт...");
+                self.redraw();
+            }
+        }
     }
 
     fn poll_subscriptions(&mut self) {
@@ -747,6 +779,8 @@ impl App {
             antigravity_template: false,
             imported_routing: None,
             selecting_target: false,
+            lan_sync_session: None,
+            lan_sync_rx: None,
             target_page: 0,
             scroll_bar: None,
             scroll_drag: None,
@@ -1092,14 +1126,67 @@ impl App {
                 self.page = page;
                 self.offset = 0;
             }
-            Action::OpenAboutSite | Action::OpenGitHub => {
-                let url = if action == Action::OpenGitHub {
-                    "https://github.com/vaalimusic/EvertyMultiLink"
-                } else {
-                    "https://desk.everty.ru/opensource"
+            Action::OpenAboutSite | Action::OpenGitHub | Action::OpenDonate => {
+                let url = match action {
+                    Action::OpenGitHub => "https://github.com/vaalimusic/EvertyMultiLink",
+                    Action::OpenDonate => "https://boosty.to/vaali/donate",
+                    _ => "https://desk.everty.ru/opensource",
                 };
                 if multilink_platform::open_project_site(url).is_err() {
                     self.notify(format!("Не удалось открыть браузер: {url}"));
+                }
+            }
+            Action::CopyQrContent => {
+                let text = match &self.modal {
+                    Some(Modal::ShareQr { content, .. }) => Some(content.clone()),
+                    Some(Modal::LanSync { url, .. }) => Some(url.clone()),
+                    _ => None,
+                };
+                if let Some(text) = text {
+                    if let Ok(mut clipboard) = arboard::Clipboard::new() {
+                        let _ = clipboard.set_text(text);
+                        self.notify("Скопировано в буфер обмена");
+                    }
+                }
+            }
+            Action::ShareNode(index) => {
+                if let Some(node) = self.settings.nodes.get(index) {
+                    if let Some(uri) = node.to_vless_uri() {
+                        self.modal = Some(Modal::ShareQr {
+                            title: format!("Поделиться: {}", node.name),
+                            content: uri,
+                            caption: "Отсканируйте камерой смартфона или скопируйте VLESS-ссылку:".into(),
+                        });
+                        self.redraw();
+                    } else {
+                        self.notify("Не удалось преобразовать узел в ссылку");
+                    }
+                }
+            }
+            Action::ShareSubscription(id) => {
+                if let Some(sub) = self.settings.subscriptions.iter().find(|s| s.id == id) {
+                    self.modal = Some(Modal::ShareQr {
+                        title: format!("Подписка: {}", sub.name),
+                        content: sub.url.clone(),
+                        caption: "Отсканируйте камерой смартфона или скопируйте ссылку на подписку:".into(),
+                    });
+                    self.redraw();
+                }
+            }
+            Action::OpenLanSync => {
+                let (tx, rx) = std::sync::mpsc::channel();
+                match lan_sync::start_lan_sync(tx) {
+                    Ok(session) => {
+                        let url = session.url.clone();
+                        let pin = session.pin.clone();
+                        self.lan_sync_session = Some(session);
+                        self.lan_sync_rx = Some(rx);
+                        self.modal = Some(Modal::LanSync { url, pin });
+                        self.redraw();
+                    }
+                    Err(e) => {
+                        self.notify(format!("Ошибка запуска: {e}"));
+                    }
                 }
             }
             Action::RefreshSubscription(id) if !self.busy => {
@@ -1244,6 +1331,10 @@ impl App {
                 self.edit_scroll = 0.0;
             }
             Action::Close if !self.busy => {
+                if let Some(session) = self.lan_sync_session.take() {
+                    session.stop();
+                }
+                self.lan_sync_rx = None;
                 self.modal = None;
                 self.editing_rule = None;
                 self.editing_subscription = None;
@@ -1443,7 +1534,7 @@ impl App {
                         Some(Modal::Rule | Modal::ProcessRule | Modal::RuRule)
                     ) =>
             {
-                self.note_parent = self.modal;
+                self.note_parent = self.modal.clone();
                 self.note_value = self.edit.text().to_owned();
                 self.edit.set_text(&self.note_draft);
                 self.edit_scroll = 0.0;
@@ -1606,7 +1697,7 @@ impl App {
                             ]);
                         }
                     }
-                    None => {}
+                    Some(Modal::ShareQr { .. }) | Some(Modal::LanSync { .. }) | None => {}
                 }
             }
             Action::Submit => {}
@@ -2241,6 +2332,7 @@ impl ApplicationHandler for App {
         }
     }
     fn about_to_wait(&mut self, event_loop: &ActiveEventLoop) {
+        self.poll_lan_sync();
         self.poll_subscriptions();
         if self.connected
             && !self.busy
@@ -2672,7 +2764,7 @@ fn main() {
     if args.iter().any(|s| s == "--bench-ui") {
         app.compact = false;
         for modal in [None, Some(Modal::Import)] {
-            app.modal = modal;
+            app.modal = modal.clone();
             app.edit
                 .set_text("https://provider.example/subscription/test");
             let mut times = Vec::new();

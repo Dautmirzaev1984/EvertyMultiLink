@@ -43,22 +43,47 @@ class RoutingFragment : Fragment() {
         setupSplitRu()
         setupCustomRules()
         setupPerAppVpn()
-        setupAutoUpdateAndGithub()
+        setupAutoUpdateAndProjectLinks()
     }
 
-    private fun setupAutoUpdateAndGithub() {
+    private fun setupAutoUpdateAndProjectLinks() {
         binding.switchAutoUpdateSub.isChecked = settings.isAutoUpdateOnStartEnabled
         binding.switchAutoUpdateSub.setOnCheckedChangeListener { _, isChecked ->
             settings.isAutoUpdateOnStartEnabled = isChecked
         }
 
+        // Cute pulsating heart animation for Boosty
+        val pulseAnim = android.view.animation.ScaleAnimation(
+            1.0f, 1.22f, 1.0f, 1.22f,
+            android.view.animation.Animation.RELATIVE_TO_SELF, 0.5f,
+            android.view.animation.Animation.RELATIVE_TO_SELF, 0.5f
+        ).apply {
+            duration = 850
+            repeatMode = android.view.animation.Animation.REVERSE
+            repeatCount = android.view.animation.Animation.INFINITE
+            interpolator = android.view.animation.AccelerateDecelerateInterpolator()
+        }
+        binding.ivBoostyHeart.startAnimation(pulseAnim)
+
+        binding.cardBoostyDonate.setOnClickListener {
+            openUrl("https://boosty.to/vaali/donate")
+        }
+
+        binding.cardOpenSourceLink.setOnClickListener {
+            openUrl("https://desk.everty.ru/opensource")
+        }
+
         binding.cardGithubLink.setOnClickListener {
-            try {
-                val browserIntent = Intent(Intent.ACTION_VIEW, android.net.Uri.parse("https://github.com/vaalimusic/EvertyMultiLink"))
-                startActivity(browserIntent)
-            } catch (_: Exception) {
-                Toast.makeText(requireContext(), "Не удалось открыть ссылку", Toast.LENGTH_SHORT).show()
-            }
+            openUrl("https://github.com/vaalimusic/EvertyMultiLink")
+        }
+    }
+
+    private fun openUrl(url: String) {
+        try {
+            val browserIntent = Intent(Intent.ACTION_VIEW, android.net.Uri.parse(url))
+            startActivity(browserIntent)
+        } catch (_: Exception) {
+            Toast.makeText(requireContext(), "Не удалось открыть ссылку", Toast.LENGTH_SHORT).show()
         }
     }
 

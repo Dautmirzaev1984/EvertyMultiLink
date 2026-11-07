@@ -350,6 +350,30 @@ fn bytes(value: f64) -> String {
     }
 }
 
+fn draw_qr(c: &mut Canvas<'_>, x: f64, y: f64, size: f64, data: &str) {
+    if let Ok(code) = qrcode::QrCode::new(data.as_bytes()) {
+        let width = code.width();
+        if width > 0 {
+            let padding = 10.0;
+            let qr_size = size - padding * 2.0;
+            let cell = qr_size / width as f64;
+            c.rect(x, y, size, size, Color::rgba(255, 255, 255, 255), 8.0);
+            for cy in 0..width {
+                for cx in 0..width {
+                    if code[(cx, cy)] == qrcode::Color::Dark {
+                        let px = x + padding + cx as f64 * cell;
+                        let py = y + padding + cy as f64 * cell;
+                        c.rect(px, py, cell.ceil(), cell.ceil(), Color::rgba(0, 0, 0, 255), 0.0);
+                    }
+                }
+            }
+            return;
+        }
+    }
+    c.rect(x, y, size, size, SOFT, 8.0);
+    c.text(x + 20.0, y + size / 2.0, "QR Code", 14.0, MUTED, false);
+}
+
 impl App {
     pub(super) fn paint(&mut self, w: f64, h: f64) -> PaintList {
         let language = self.language();
@@ -411,7 +435,7 @@ impl App {
         } else {
             None
         };
-        let rule_targets = if self.modal.is_some_and(|modal| modal != Modal::Import) {
+        let rule_targets = if self.modal.as_ref().is_some_and(|modal| *modal != Modal::Import) {
             self.rule_targets()
         } else {
             Vec::new()
@@ -1029,29 +1053,37 @@ impl App {
                     true,
                 );
                 c.button(
-                    w - 219.0,
+                    w - 180.0,
                     128.0,
-                    185.0,
+                    146.0,
+                    "📥 Принять QR",
+                    Action::OpenLanSync,
+                    false,
+                );
+                c.button(
+                    w - 365.0,
+                    128.0,
+                    175.0,
                     "+ Добавить серверы",
                     Action::Import,
                     true,
                 );
                 c.icon_button(
-                    w - 363.0,
+                    w - 509.0,
                     128.0,
                     8,
                     Action::EnableAllServers,
                     "Включить все серверы",
                 );
                 c.icon_button(
-                    w - 315.0,
+                    w - 461.0,
                     128.0,
                     9,
                     Action::DisableAllServers,
                     "Выключить все серверы",
                 );
                 c.icon_button(
-                    w - 267.0,
+                    w - 413.0,
                     128.0,
                     10,
                     Action::RankServers,
@@ -1108,9 +1140,17 @@ impl App {
                     false,
                 );
                 c.button(
-                    w - 265.0,
+                    w - 180.0,
                     149.0,
-                    231.0,
+                    146.0,
+                    "📥 Принять QR",
+                    Action::OpenLanSync,
+                    false,
+                );
+                c.button(
+                    w - 365.0,
+                    149.0,
+                    175.0,
                     "+ Добавить подписку",
                     Action::Import,
                     true,
@@ -1228,7 +1268,7 @@ impl App {
                     c.button(
                         x + 22.0,
                         y + 53.0,
-                        132.0,
+                        110.0,
                         "Название",
                         Action::RenameSubscription(source.id),
                         false,
@@ -1243,9 +1283,17 @@ impl App {
                     } else {
                         ("Изменить URL", Action::EditSubscriptionUrl(source.id))
                     };
-                    c.button(x + 164.0, y + 53.0, 148.0, label, action, false);
+                    c.button(x + 140.0, y + 53.0, 130.0, label, action, false);
+                    c.button(
+                        x + 278.0,
+                        y + 53.0,
+                        126.0,
+                        "Поделиться",
+                        Action::ShareSubscription(source.id),
+                        false,
+                    );
                     c.icon_button(
-                        x + 322.0,
+                        x + 412.0,
                         y + 53.0,
                         2,
                         Action::DeleteSubscription(source.id),
@@ -1255,7 +1303,7 @@ impl App {
                 }
             }
             Page::About => {
-                c.card(x, 131.0, width, 370.0);
+                c.card(x, 131.0, width, 410.0);
                 c.b.image(
                     LogicalRect::from_xywh(x + 28.0, 161.0, 72.0, 72.0),
                     64,
@@ -1276,32 +1324,40 @@ impl App {
                 c.text(x + 28.0, 310.0, "Arthur Valiev", 23.0, TEXT, true);
                 c.text(
                     x + 28.0,
-                    360.0,
-                    "Проект, открытые разработки и новости Everty",
+                    350.0,
+                    "Проект, открытые разработки и экосистема Everty",
                     14.0,
                     MUTED,
                     false,
                 );
                 c.button(
                     x + 28.0,
-                    398.0,
-                    250.0,
-                    "desk.everty.ru ↗",
-                    Action::OpenAboutSite,
+                    388.0,
+                    226.0,
+                    "♥ Поддержать проект ↗",
+                    Action::OpenDonate,
                     true,
                 );
                 c.button(
-                    x + 294.0,
-                    398.0,
-                    190.0,
+                    x + 262.0,
+                    388.0,
+                    195.0,
+                    "desk.everty.ru ↗",
+                    Action::OpenAboutSite,
+                    false,
+                );
+                c.button(
+                    x + 465.0,
+                    388.0,
+                    140.0,
                     "GitHub ↗",
                     Action::OpenGitHub,
                     false,
                 );
                 c.text(
                     x + 28.0,
-                    458.0,
-                    "Rust + EvertyUI · сетевое ядро Mihomo",
+                    455.0,
+                    "Rust + EvertyUI · сетевое ядро Mihomo · Windows, Android & TV",
                     12.0,
                     MUTED,
                     false,
@@ -1676,20 +1732,78 @@ impl App {
         if self.modal.is_none() {
             c.paint_tooltip(w, h);
         }
-        if let Some(modal) = self.modal {
+        if let Some(ref modal) = self.modal {
             c.hits.clear();
             c.b.set_layer(PaintLayer::Overlay);
             c.rect(0.0, 0.0, w, h, Color::rgba(0, 0, 0, 180), 0.0);
             let mx = (w - 660.0) / 2.0;
-            let modal_height = if matches!(modal, Modal::Rule | Modal::ProcessRule | Modal::RuRule)
-            {
-                360.0
-            } else {
-                320.0
+            let modal_height = match modal {
+                Modal::Rule | Modal::ProcessRule | Modal::RuRule => 360.0,
+                Modal::ShareQr { .. } | Modal::LanSync { .. } => 420.0,
+                _ => 320.0,
             };
             let my = (h - modal_height) / 2.0;
             c.card(mx, my, 660.0, modal_height);
-            if modal == Modal::Language {
+            if let Modal::ShareQr { title, content, caption } = modal {
+                c.text(mx + 28.0, my + 24.0, title, 21.0, TEXT, true);
+                c.text(mx + 28.0, my + 54.0, caption, 12.0, MUTED, false);
+                draw_qr(&mut c, mx + 28.0, my + 84.0, 240.0, content);
+                c.text(mx + 290.0, my + 94.0, "ССЫЛКА ДЛЯ ПОДКЛЮЧЕНИЯ:", 11.0, MUTED, true);
+                c.card(mx + 290.0, my + 115.0, 342.0, 110.0);
+                c.b.push_clip(LogicalRect::from_xywh(mx + 300.0, my + 125.0, 322.0, 90.0));
+                c.raw_text(mx + 300.0, my + 125.0, &shortened(content, 180), 12.0, TEXT, false);
+                let _ = c.b.pop_clip();
+                c.button(
+                    mx + 290.0,
+                    my + 245.0,
+                    342.0,
+                    "📋 Скопировать ссылку",
+                    Action::CopyQrContent,
+                    true,
+                );
+                c.button(
+                    mx + 483.0,
+                    my + 360.0,
+                    149.0,
+                    "Закрыть",
+                    Action::Close,
+                    false,
+                );
+                self.input_rect = None;
+                self.hits = c.hits;
+                return c.b.finish();
+            }
+            if let Modal::LanSync { url, pin } = modal {
+                c.text(mx + 28.0, my + 24.0, "Принять по QR / Wi-Fi", 21.0, TEXT, true);
+                c.text(mx + 28.0, my + 54.0, "Отсканируйте камерой смартфона или перейдите в браузере:", 12.0, MUTED, false);
+                draw_qr(&mut c, mx + 28.0, my + 84.0, 240.0, url);
+                c.text(mx + 290.0, my + 94.0, "КОД ПОДТВЕРЖДЕНИЯ (PIN):", 11.0, MUTED, true);
+                c.rect(mx + 290.0, my + 114.0, 150.0, 42.0, SOFT, 8.0);
+                c.text(mx + 316.0, my + 122.0, pin, 24.0, ACCENT, true);
+                c.text(mx + 290.0, my + 175.0, "АДРЕС ВЕБ-ИНТЕРФЕЙСА:", 11.0, MUTED, true);
+                c.text(mx + 290.0, my + 195.0, url, 13.0, TEXT, false);
+                c.button(
+                    mx + 290.0,
+                    my + 230.0,
+                    240.0,
+                    "Скопировать адрес",
+                    Action::CopyQrContent,
+                    false,
+                );
+                c.text(mx + 290.0, my + 295.0, "Ожидание отправки со смартфона или браузера…", 12.0, MUTED, false);
+                c.button(
+                    mx + 483.0,
+                    my + 360.0,
+                    149.0,
+                    "Закрыть",
+                    Action::Close,
+                    true,
+                );
+                self.input_rect = None;
+                self.hits = c.hits;
+                return c.b.finish();
+            }
+            if *modal == Modal::Language {
                 c.text(mx + 28.0, my + 24.0, "Язык интерфейса", 23.0, TEXT, true);
                 c.text(
                     mx + 28.0,
@@ -1725,7 +1839,7 @@ impl App {
                 c.text(
                     mx + 28.0,
                     my + 24.0,
-                    if modal == Modal::ClearLibrary {
+                    if *modal == Modal::ClearLibrary {
                         "Очистить библиотеку?"
                     } else {
                         "Удалить подписку?"
@@ -1745,7 +1859,7 @@ impl App {
                 c.text(
                     mx + 28.0,
                     my + 122.0,
-                    if modal == Modal::ClearLibrary {
+                    if *modal == Modal::ClearLibrary {
                         "Будут удалены все локальные серверы, подписки и сохранённый доступ."
                     } else {
                         "Будут удалены только серверы, принадлежащие одной этой подписке."
@@ -1757,7 +1871,7 @@ impl App {
                 c.text(
                     mx + 28.0,
                     my + 154.0,
-                    if modal == Modal::ClearLibrary {
+                    if *modal == Modal::ClearLibrary {
                         "Восстановить доступ можно обновлением ссылки или новым ключом."
                     } else {
                         "Общие и вручную добавленные серверы останутся."
@@ -1794,7 +1908,7 @@ impl App {
                 self.hits = c.hits;
                 return c.b.finish();
             }
-            if modal == Modal::RouteImport {
+            if *modal == Modal::RouteImport {
                 let count = self
                     .imported_routing
                     .as_ref()
@@ -1853,14 +1967,14 @@ impl App {
                 self.hits = c.hits;
                 return c.b.finish();
             }
-            let note = modal == Modal::Note;
+            let note = *modal == Modal::Note;
             let subscription = matches!(
                 modal,
                 Modal::SubscriptionName | Modal::SubscriptionUrl | Modal::AccessCode
             );
-            let import = modal == Modal::Import || note || subscription;
-            let ru = modal == Modal::RuRule;
-            let process = modal == Modal::ProcessRule;
+            let import = *modal == Modal::Import || note || subscription;
+            let ru = *modal == Modal::RuRule;
+            let process = *modal == Modal::ProcessRule;
             let route_fields = matches!(modal, Modal::Rule | Modal::ProcessRule);
             let antigravity = route_fields && self.antigravity_template;
             c.text(
@@ -1868,11 +1982,11 @@ impl App {
                 my + 23.0,
                 if note {
                     "Заметка к правилу"
-                } else if modal == Modal::AccessCode {
+                } else if *modal == Modal::AccessCode {
                     "Активация доступа"
-                } else if modal == Modal::SubscriptionName {
+                } else if *modal == Modal::SubscriptionName {
                     "Название подписки"
-                } else if modal == Modal::SubscriptionUrl {
+                } else if *modal == Modal::SubscriptionUrl {
                     "Изменить ссылку подписки"
                 } else if import {
                     "Добавить подписку или серверы"
@@ -1922,11 +2036,11 @@ impl App {
                     my + 68.0,
                     if note {
                         "Короткая заметка: назначение правила, приложение или пояснение."
-                    } else if modal == Modal::AccessCode {
+                    } else if *modal == Modal::AccessCode {
                         "Ключ из 6 символов. Например: AB7K9X. Регистр букв не важен."
-                    } else if modal == Modal::SubscriptionName {
+                    } else if *modal == Modal::SubscriptionName {
                         "Удобное название для списка. До 80 символов."
-                    } else if modal == Modal::SubscriptionUrl {
+                    } else if *modal == Modal::SubscriptionUrl {
                         "Новая ссылка применится после успешной загрузки и проверки серверов."
                     } else if import {
                         "Вставьте HTTPS-ссылку, Everty JSON, VLESS URI, Base64 или YAML."
@@ -1972,9 +2086,9 @@ impl App {
                     field.contains(self.pointer),
                     if note {
                         "Например: основной и вспомогательный процессы приложения"
-                    } else if modal == Modal::AccessCode {
+                    } else if *modal == Modal::AccessCode {
                         "AB7K9X"
-                    } else if modal == Modal::SubscriptionName {
+                    } else if *modal == Modal::SubscriptionName {
                         "Например: Основная подписка"
                     } else if import {
                         "https://provider.example/subscription/…"
@@ -2103,7 +2217,7 @@ impl App {
                     "Проверка…"
                 } else if note {
                     "Готово"
-                } else if modal == Modal::AccessCode {
+                } else if *modal == Modal::AccessCode {
                     "Активировать"
                 } else if subscription {
                     "Сохранить"
@@ -2357,7 +2471,7 @@ fn server_list(
             true,
         );
         c.badge(
-            x + w - 151.0,
+            x + w - 172.0,
             ry + 10.0,
             if !node.enabled {
                 "Исключён"
@@ -2367,6 +2481,14 @@ fn server_list(
                 "○ Ожидание"
             },
             node.enabled && connected && node.delay.is_some(),
+        );
+        c.button(
+            x + w - 62.0,
+            ry + 10.0,
+            48.0,
+            "QR ↗",
+            Action::ShareNode(i),
+            false,
         );
         if !c.locked {
             c.hits.push((row, Action::Toggle(i)));

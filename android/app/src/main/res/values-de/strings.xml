@@ -36,4 +36,15 @@
     <string name="nodes_title">Server &amp; Knoten</string>
     <string name="no_nodes">Keine Knoten vorhanden. Fügen Sie ein Abonnement hinzu.</string>
     <string name="ping_ms">%d ms</string>
+    <string name="sub_days_left">noch %d Tage</string>
+    <string name="sub_days_expired">Abgelaufen</string>
+    <string name="sub_days_permanent">Dauerhaft</string>
+
+    <!-- Project & About Links -->
+    <string name="donate_title">Projekt auf Boosty unterstützen</string>
+    <string name="donate_desc">MultiLink unterstützen und den Autor fördern ❤️</string>
+    <string name="opensource_title">Everty OpenSource</string>
+    <string name="opensource_desc">desk.everty.ru/opensource • Open-Source-Ökosystem</string>
+    <string name="github_title">GitHub • Releases &amp; Quellcode</string>
+    <string name="github_desc">github.com/vaalimusic/EvertyMultiLink</string>
 </resources>

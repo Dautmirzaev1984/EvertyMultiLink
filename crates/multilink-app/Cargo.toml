@@ -1,6 +1,6 @@
 [package]
 name = "multilink-app"
-version = "1.0.0"
+version = "1.1.0"
 edition = "2021"
 
 [dependencies]
@@ -15,6 +15,7 @@ arboard = { version = "3", default-features = false }
 image = { version = "0.25", default-features = false, features = ["png"] }
 uuid = { version = "1", features = ["v4"] }
 chrono = { version = "0.4", default-features = false, features = ["std"] }
+qrcode = { version = "0.14", default-features = false }
 
 [target.'cfg(windows)'.dependencies]
 tray-icon = "0.21.3"

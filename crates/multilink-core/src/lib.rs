@@ -73,6 +73,56 @@ pub struct Node {
     #[serde(default = "default_manual_node")]
     pub manually_added: bool,
 }
+
+impl Node {
+    pub fn to_vless_uri(&self) -> Option<String> {
+        let uuid = self.proxy.get(Value::from("uuid"))?.as_str()?;
+        let server = self.proxy.get(Value::from("server"))?.as_str()?;
+        let port = self.proxy.get(Value::from("port"))?.as_u64()?;
+        let mut query = Vec::new();
+        if let Some(network) = self.proxy.get(Value::from("network")).and_then(Value::as_str) {
+            query.push(format!("type={network}"));
+        }
+        let tls = self.proxy.get(Value::from("tls")).and_then(Value::as_bool).unwrap_or(false);
+        let reality = self.proxy.get(Value::from("reality-opts")).and_then(Value::as_mapping);
+        if let Some(ro) = reality {
+            query.push("security=reality".to_string());
+            if let Some(pbk) = ro.get(Value::from("public-key")).and_then(Value::as_str) {
+                query.push(format!("pbk={pbk}"));
+            }
+            if let Some(sid) = ro.get(Value::from("short-id")).and_then(Value::as_str) {
+                query.push(format!("sid={sid}"));
+            }
+            if let Some(spx) = &self.spider_x {
+                query.push(format!("spx={spx}"));
+            }
+        } else if tls {
+            query.push("security=tls".to_string());
+        }
+        if let Some(sni) = self.proxy.get(Value::from("servername")).and_then(Value::as_str) {
+            query.push(format!("sni={sni}"));
+        }
+        if let Some(fp) = self.proxy.get(Value::from("client-fingerprint")).and_then(Value::as_str) {
+            query.push(format!("fp={fp}"));
+        }
+        if let Some(flow) = self.proxy.get(Value::from("flow")).and_then(Value::as_str) {
+            query.push(format!("flow={flow}"));
+        }
+        if let Some(ws) = self.proxy.get(Value::from("ws-opts")).and_then(Value::as_mapping) {
+            if let Some(path) = ws.get(Value::from("path")).and_then(Value::as_str) {
+                let encoded_path = url::form_urlencoded::byte_serialize(path.as_bytes()).collect::<String>();
+                query.push(format!("path={encoded_path}"));
+            }
+        }
+        let q = if query.is_empty() {
+            String::new()
+        } else {
+            format!("?{}", query.join("&"))
+        };
+        let encoded_name = url::form_urlencoded::byte_serialize(self.name.as_bytes()).collect::<String>();
+        Some(format!("vless://{uuid}@{server}:{port}{q}#{encoded_name}"))
+    }
+}
 fn default_manual_node() -> bool {
     true
 }

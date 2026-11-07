@@ -36,4 +36,15 @@
     <string name="nodes_title">服务器节点</string>
     <string name="no_nodes">未添加节点，请导入订阅或链接。</string>
     <string name="ping_ms">%d 毫秒</string>
+    <string name="sub_days_left">剩余 %d 天</string>
+    <string name="sub_days_expired">已过期</string>
+    <string name="sub_days_permanent">永久有效</string>
+
+    <!-- Project & About Links -->
+    <string name="donate_title">在 Boosty 上赞助项目</string>
+    <string name="donate_desc">助力 Everty MultiLink 开发，支持作者 ❤️</string>
+    <string name="opensource_title">Everty 开源生态</string>
+    <string name="opensource_desc">desk.everty.ru/opensource • 开源项目生态系统</string>
+    <string name="github_title">GitHub • 源码与更新</string>
+    <string name="github_desc">github.com/vaalimusic/EvertyMultiLink</string>
 </resources>

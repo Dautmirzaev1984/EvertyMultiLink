@@ -36,4 +36,15 @@
     <string name="nodes_title">Серверы и Узлы</string>
     <string name="no_nodes">Нет добавленных узлов. Добавьте подписку или VLESS ссылку.</string>
     <string name="ping_ms">%d мс</string>
+    <string name="sub_days_left">%d дн.</string>
+    <string name="sub_days_expired">Истекла</string>
+    <string name="sub_days_permanent">Бессрочно</string>
+
+    <!-- Project & About Links -->
+    <string name="donate_title">Поддержать проект на Boosty</string>
+    <string name="donate_desc">Помочь разработке Everty MultiLink и поддержать автора ❤️</string>
+    <string name="opensource_title">Everty OpenSource</string>
+    <string name="opensource_desc">desk.everty.ru/opensource • Экосистема открытых проектов</string>
+    <string name="github_title">GitHub • Следите за обновлениями</string>
+    <string name="github_desc">github.com/vaalimusic/EvertyMultiLink</string>
 </resources>

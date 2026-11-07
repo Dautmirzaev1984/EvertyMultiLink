@@ -36,4 +36,15 @@
     <string name="nodes_title">Servers &amp; Nodes</string>
     <string name="no_nodes">No nodes added. Add a subscription or VLESS link.</string>
     <string name="ping_ms">%d ms</string>
+    <string name="sub_days_left">%d days left</string>
+    <string name="sub_days_expired">Expired</string>
+    <string name="sub_days_permanent">Lifetime</string>
+
+    <!-- Project & About Links -->
+    <string name="donate_title">Support project on Boosty</string>
+    <string name="donate_desc">Help development and support the author ❤️</string>
+    <string name="opensource_title">Everty OpenSource</string>
+    <string name="opensource_desc">desk.everty.ru/opensource • Open-source ecosystem</string>
+    <string name="github_title">GitHub • Releases &amp; Source</string>
+    <string name="github_desc">github.com/vaalimusic/EvertyMultiLink</string>
 </resources>
