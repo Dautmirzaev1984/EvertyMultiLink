@@ -1684,7 +1684,7 @@ dependencies = [
 
 [[package]]
 name = "multilink-app"
-version = "0.1.0"
+version = "1.0.0"
 dependencies = [
  "arboard",
  "chrono",
@@ -1704,7 +1704,7 @@ dependencies = [
 
 [[package]]
 name = "multilink-core"
-version = "0.1.0"
+version = "1.0.0"
 dependencies = [
  "base64 0.22.1",
  "ipnet",
@@ -1717,7 +1717,7 @@ dependencies = [
 
 [[package]]
 name = "multilink-mihomo"
-version = "0.1.0"
+version = "1.0.0"
 dependencies = [
  "multilink-core",
  "multilink-platform",
@@ -1730,7 +1730,7 @@ dependencies = [
 
 [[package]]
 name = "multilink-platform"
-version = "0.1.0"
+version = "1.0.0"
 dependencies = [
  "serde",
  "serde_json",

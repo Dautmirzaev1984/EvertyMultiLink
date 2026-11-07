@@ -119,3 +119,11 @@ $installer = Join-Path $output "$name.exe"
 $hash = (Get-FileHash -LiteralPath $installer -Algorithm SHA256).Hash.ToLowerInvariant()
 "$hash  $name.exe" | Set-Content -LiteralPath "$installer.sha256" -Encoding ascii
 Write-Output $installer
+
+$portableName = "EvertyMultiLink-$version-windows-x64-portable"
+$portableZip = Join-Path $output "$portableName.zip"
+if (Test-Path -LiteralPath $portableZip) { Remove-Item -LiteralPath $portableZip -Force }
+Compress-Archive -Path "$stage\*" -DestinationPath $portableZip -Force
+$zipHash = (Get-FileHash -LiteralPath $portableZip -Algorithm SHA256).Hash.ToLowerInvariant()
+"$zipHash  $portableName.zip" | Set-Content -LiteralPath "$portableZip.sha256" -Encoding ascii
+Write-Output $portableZip

@@ -113,8 +113,8 @@ jobs:
       - name: Compute SHA-256 Checksums
         run: |
           cd release-assets
-          for file in *.apk *.exe; do
-            if [ -f "$file" ]; then
+          for file in *.apk *.exe *.zip; do
+            if [ -f "$file" ] && [ ! -f "${file}.sha256" ]; then
               sha256sum "$file" > "${file}.sha256"
             fi
           done
