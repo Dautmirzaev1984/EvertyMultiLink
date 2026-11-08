@@ -1,4 +1,5 @@
-
+on:
+  workflow_dispatch:
 name: MC.HOUSE Android Build
 
 on:
